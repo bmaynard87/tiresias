@@ -6,7 +6,7 @@ from pathlib import Path
 import typer
 
 from .config import load_config
-from .gating import risk_at_or_above
+from .gating import should_fail
 from .providers.openai_provider import OpenAIProvider
 from .render import render_review_md
 from .reviewer import Reviewer
@@ -61,5 +61,5 @@ def review(
     )
     (out_dir / "review.md").write_text(rendered + "\n", encoding="utf-8")
 
-    if risk_at_or_above(review_payload["overall_risk"], fail_on):
+    if should_fail(review_payload, fail_on):
         raise typer.Exit(code=2)

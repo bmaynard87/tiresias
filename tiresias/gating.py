@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Iterable
+from typing import Any, Mapping
 
 
 _RISK_ORDER = ["low", "medium", "high", "critical"]
@@ -23,14 +23,12 @@ def risk_at_or_above(risk: str, threshold: str) -> bool:
     return _RISK_ORDER.index(risk_norm) >= _RISK_ORDER.index(threshold_norm)
 
 
-def should_fail(blockers: int | Iterable[object], threshold: str) -> bool:
-    """Return True when execution should fail.
+def should_fail(review: Mapping[str, Any], threshold: str) -> bool:
+    """Return True when Tiresias should exit with a failure code.
 
-    V1 interpretation: any blockers are a failure regardless of threshold.
-    `threshold` is accepted for a stable signature even if unused in V1.
+    PR1: Centralize the decision through this single function.
+    V1 behavior gates only on overall risk vs. a threshold.
     """
 
-    _ = threshold  # kept for interface stability
-    if isinstance(blockers, int):
-        return blockers > 0
-    return any(True for _item in blockers)
+    risk = str(review.get("overall_risk", "")).strip().lower()
+    return risk_at_or_above(risk, threshold)
