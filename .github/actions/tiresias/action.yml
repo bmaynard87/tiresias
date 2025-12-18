@@ -1,0 +1,23 @@
+name: "Tiresias"
+description: "Run deterministic design review gating on a Markdown document"
+inputs:
+  path:
+    description: "Path to markdown document"
+    required: true
+  fail-on:
+    description: "Exit 2 if risk >= this threshold"
+    required: false
+    default: "critical"
+runs:
+  using: "composite"
+  steps:
+    - name: Install Tiresias
+      shell: bash
+      run: |
+        python -m pip install --upgrade pip
+        pip install -e .
+
+    - name: Run Tiresias review
+      shell: bash
+      run: |
+        tiresias review "${{ inputs.path }}" --fail-on "${{ inputs.fail-on }}"

@@ -1,0 +1,3 @@
+# Tiresias configuration (v1)
+# Provider selection is intentionally simple and deterministic.
+provider: openai

@@ -1,0 +1,16 @@
+{
+    "overall_risk": "high",
+    "summary": "A valid review payload.",
+    "findings": [
+        {
+            "title": "Ambiguous success criteria",
+            "severity": "high",
+            "description": "The document does not define measurable success criteria.",
+            "recommendation": "Add explicit acceptance criteria and measurable KPIs.",
+            "tags": [
+                "clarity",
+                "requirements"
+            ]
+        }
+    ]
+}
