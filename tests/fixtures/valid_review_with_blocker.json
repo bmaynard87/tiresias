@@ -1,0 +1,21 @@
+{
+    "overall_risk": "medium",
+    "summary": "A valid review payload with a properly formed blocker.",
+    "findings": [
+        {
+            "title": "Clear scope but missing rollback plan",
+            "severity": "medium",
+            "description": "The document defines scope but does not describe a rollback strategy.",
+            "recommendation": "Add a rollback plan and explicit triggers for rollback."
+        }
+    ],
+    "blockers": [
+        {
+            "id": "BLK-001",
+            "severity": "high",
+            "status": "open",
+            "title": "Missing rollback plan",
+            "pass_criteria": "Document includes rollback steps and rollback triggers."
+        }
+    ]
+}
