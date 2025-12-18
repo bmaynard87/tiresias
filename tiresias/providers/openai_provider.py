@@ -13,6 +13,7 @@ class OpenAIProvider:
         _ = markdown
         return {
             "overall_risk": "high",
+            "blockers": [],
             "summary": "Deterministic stub review. Replace with a real provider later.",
             "findings": [
                 {

@@ -11,6 +11,31 @@ REVIEW_SCHEMA: dict = {
     "required": ["overall_risk", "summary", "findings"],
     "properties": {
         "overall_risk": {"type": "string", "enum": RISK_LEVELS},
+        "blockers": {
+            "type": "array",
+            "default": [],
+            "items": {
+                "type": "object",
+                "additionalProperties": False,
+                "required": [
+                    "id",
+                    "severity",
+                    "status",
+                    "title",
+                    "pass_criteria",
+                ],
+                "properties": {
+                    "id": {"type": "string", "minLength": 1},
+                    "severity": {"type": "string", "enum": FINDING_SEVERITIES},
+                    "status": {
+                        "type": "string",
+                        "enum": ["open", "partial", "resolved", "waived"],
+                    },
+                    "title": {"type": "string", "minLength": 1},
+                    "pass_criteria": {"type": "string", "minLength": 1},
+                },
+            },
+        },
         "summary": {"type": "string", "minLength": 1},
         "findings": {
             "type": "array",
