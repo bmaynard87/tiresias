@@ -1,5 +1,21 @@
 {
-    "overall_risk": "nope",
-    "summary": "",
-    "findings": []
+    "overall_risk": "high",
+    "summary": "This payload should fail schema validation due to a malformed blocker.",
+    "findings": [
+        {
+            "title": "Valid finding",
+            "severity": "high",
+            "description": "Valid finding fields.",
+            "recommendation": "Valid recommendation."
+        }
+    ],
+    "blockers": [
+        {
+            "id": 123,
+            "severity": "high",
+            "status": "open",
+            "title": "Malformed blocker id",
+            "pass_criteria": "Blocker id must be a string."
+        }
+    ]
 }

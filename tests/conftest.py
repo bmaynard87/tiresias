@@ -15,6 +15,7 @@ class FakeProvider:
         _ = markdown
         return {
             "overall_risk": self.overall_risk,
+            "blockers": [],
             "summary": "FakeProvider deterministic review.",
             "findings": [
                 {
