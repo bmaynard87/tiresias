@@ -44,12 +44,8 @@ def _render_header(console: Console, report: ReviewReport) -> None:
     header_text.append("Tiresias Design Review Report\n", style="bold cyan")
     header_text.append(f"Version: {report.metadata.tool_version}  ", style="dim")
     header_text.append(f"Profile: {report.metadata.profile}  ", style="dim")
-    header_text.append(
-        f"Files: {len(report.metadata.input_files)}  ", style="dim"
-    )
-    header_text.append(
-        f"Duration: {report.metadata.elapsed_ms}ms", style="dim"
-    )
+    header_text.append(f"Files: {len(report.metadata.input_files)}  ", style="dim")
+    header_text.append(f"Duration: {report.metadata.elapsed_ms}ms", style="dim")
 
     console.print(Panel(header_text, border_style="cyan"))
     console.print()
@@ -110,9 +106,7 @@ def _render_findings(console: Console, report: ReviewReport) -> None:
         console.print()
 
 
-def _render_findings_table(
-    console: Console, findings: list, color: str
-) -> None:
+def _render_findings_table(console: Console, findings: list, color: str) -> None:
     """Render a table of findings."""
     table = Table(
         show_header=True,

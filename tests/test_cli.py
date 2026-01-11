@@ -3,7 +3,6 @@
 import json
 from pathlib import Path
 
-import pytest
 from typer.testing import CliRunner
 
 from tiresias.cli.app import app
@@ -24,7 +23,7 @@ def test_cli_help() -> None:
     result = runner.invoke(app, ["--help"])
 
     assert result.exit_code == 0
-    assert "Tiresias" in result.output
+    assert "tiresias" in result.output.lower()
     assert "review" in result.output
 
 
@@ -61,61 +60,9 @@ def test_cli_fail_on_high() -> None:
     pass
 
 
-def test_cli_version() -> None:
-    """Test --version flag."""
-    runner = CliRunner()
-    result = runner.invoke(app, ["--version"])
-
-    assert result.exit_code == 0
-    assert "tiresias" in result.output
-    assert "0.1.0" in result.output
-
-
-def test_cli_help() -> None:
-    """Test --help output."""
-    runner = CliRunner()
-    result = runner.invoke(app, ["--help"])
-
-    assert result.exit_code == 0
-    assert "tiresias" in result.output.lower()
-    assert "review" in result.output.lower()
-
-
 def test_cli_review_nonexistent_file() -> None:
     """Test CLI with nonexistent file."""
-    from typer.testing import CliRunner
-
-    from tiresias.cli.app import app
-
-    runner = CliRunner()
     result = runner.invoke(app, ["review", "/nonexistent/file.md"])
 
     assert result.exit_code == 3
     assert "Error" in result.output
-
-
-def test_cli_version_flag() -> None:
-    """Test --version flag."""
-    from typer.testing import CliRunner
-
-    from tiresias.cli.app import app
-
-    runner = CliRunner()
-    result = runner.invoke(app, ["--version"])
-
-    assert result.exit_code == 0
-    assert "0.1.0" in result.stdout
-
-
-def test_cli_help() -> None:
-    """Test CLI help output."""
-    from typer.testing import CliRunner
-
-    from tiresias.cli.app import app
-
-    runner = CliRunner()
-    result = runner.invoke(app, ["--help"])
-
-    assert result.exit_code == 0
-    assert "tiresias" in result.stdout.lower()
-    assert "review" in result.stdout

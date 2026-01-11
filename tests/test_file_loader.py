@@ -2,8 +2,6 @@
 
 from pathlib import Path
 
-import pytest
-
 from tiresias.core.file_loader import (
     discover_files,
     load_file_content,

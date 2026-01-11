@@ -61,8 +61,6 @@ class ReviewReport(BaseModel):
     open_questions: list[str] = Field(..., description="Open questions found")
     quick_summary: list[str] = Field(..., description="3-5 bullet summary")
     risk_score: int = Field(..., ge=0, le=100, description="Overall risk score 0-100")
-    risk_score_explanation: str = Field(
-        ..., description="Explanation of risk score calculation"
-    )
+    risk_score_explanation: str = Field(..., description="Explanation of risk score calculation")
 
     model_config = {"json_schema_extra": {"title": "TiresiasReviewReport"}}
