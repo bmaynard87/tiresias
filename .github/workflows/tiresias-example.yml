@@ -1,0 +1,50 @@
+name: Tiresias Design Review
+
+on:
+  pull_request:
+    paths:
+      - 'docs/**'
+      - 'specs/**'
+      - '**.md'
+      - '**.txt'
+      - '**.yaml'
+      - '**.yml'
+      - '**.json'
+
+jobs:
+  review:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+        with:
+          version: "latest"
+
+      - name: Install Tiresias
+        run: |
+          uv sync
+
+      - name: Run Tiresias review
+        run: |
+          uv run tiresias review docs/ \
+            --format json \
+            --output tiresias-report.json \
+            --fail-on high
+        continue-on-error: true
+        id: review
+
+      - name: Upload report artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: tiresias-report
+          path: tiresias-report.json
+          if-no-files-found: warn
+
+      - name: Check for failures
+        if: steps.review.outcome == 'failure'
+        run: |
+          echo "::error::Tiresias found high-severity issues"
+          exit 1

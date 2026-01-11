@@ -1,0 +1,36 @@
+# Tiresias Configuration File Example
+# Copy this to .tiresias.yml in your repo root to customize behavior
+
+# Default analysis profile to use
+# Options: general, security, performance, reliability
+default_profile: general
+
+# Files/directories to ignore during analysis
+# Uses glob patterns
+ignore_paths:
+  - "test/**"
+  - "tests/**"
+  - "*.tmp.md"
+  - "node_modules/**"
+  - ".git/**"
+  - "drafts/**"
+
+# Additional regex patterns to redact from content
+# These are added to the default secret patterns
+redact_patterns:
+  - "internal-api-key-\\w+"
+  - "project-secret-[a-z0-9]+"
+  - "custom-token:\\s*\\w+"
+
+# Risk scoring weights by category
+# Higher values increase the risk score contribution
+# Lower values decrease it
+category_weights:
+  requirements: 1.0      # Requirements-related issues
+  architecture: 1.0      # Architecture decisions
+  testing: 1.0           # Test coverage and strategy
+  operations: 1.0        # Deployment and operations
+  security: 1.5          # Security issues (weighted higher)
+  performance: 0.8       # Performance concerns
+  reliability: 1.2       # Reliability and resilience
+  documentation: 0.5     # Documentation quality
