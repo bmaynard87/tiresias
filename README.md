@@ -33,6 +33,7 @@ If your organization believes that **undocumented assumptions become production 
   * test strategies
   * rollout and rollback plans
 * Configurable analysis profiles (`general`, `security`, `performance`, `reliability`)
+* **Finding suppressions** with required justification and optional expiry dates
 * Deterministic heuristics (no LLM hallucination)
 * Beautiful terminal output with risk scoring
 * Machine-readable JSON output for CI/CD integration
@@ -137,15 +138,23 @@ tiresias review docs/design.md
 ## Quick Start
 
 ```bash
+# Review a single document
 tiresias review docs/design.md
 
+# Review all documents in a directory
 tiresias review docs/
 
+# Export to JSON
 tiresias review docs/ --format json --output report.json
 
+# Use a specific profile
 tiresias review specs/ --profile security
 
+# CI mode: fail on high severity findings
 tiresias review docs/ --fail-on high
+
+# Show suppressed findings
+tiresias review docs/ --show-suppressed
 ```
 
 ---
@@ -158,15 +167,16 @@ tiresias review <PATH_OR_GLOB> [OPTIONS]
 
 ### Options
 
-| Option                 | Default   | Description                         |
-| ---------------------- | --------- | ----------------------------------- |
-| `--format`             | `text`    | Output format: `text` or `json`     |
-| `--severity-threshold` | `low`     | Minimum severity to display         |
-| `--fail-on`            | `none`    | Exit nonzero if findings ≥ severity |
-| `--profile`            | `general` | Analysis profile                    |
-| `--show-evidence`      | `false`   | Show evidence for findings          |
-| `--output`             | stdout    | Write output to file                |
-| `--no-color`           | `false`   | Disable color output                |
+| Option                 | Default   | Description                           |
+| ---------------------- | --------- | ------------------------------------- |
+| `--format`             | `text`    | Output format: `text` or `json`       |
+| `--severity-threshold` | `low`     | Minimum severity to display           |
+| `--fail-on`            | `none`    | Exit nonzero if findings ≥ severity   |
+| `--profile`            | `general` | Analysis profile                      |
+| `--show-evidence`      | `false`   | Show evidence for findings            |
+| `--show-suppressed`    | `false`   | Show suppressed findings              |
+| `--output`             | stdout    | Write output to file                  |
+| `--no-color`           | `false`   | Disable color output                  |
 
 ---
 
@@ -333,6 +343,137 @@ category_weights:
   reliability: 1.2
   documentation: 0.5
 ```
+
+---
+
+## Suppressing Findings
+
+Tiresias supports **finding suppressions** for accepted risks or false positives. Suppressions require documented justification and can be scoped by file, profile, or severity.
+
+### Basic Suppression
+
+Add suppressions to your `.tiresias.yml`:
+
+```yaml
+suppressions:
+  - id: REQ-001
+    reason: Success metrics tracked in external dashboard (see METRICS.md)
+
+  - id: ARCH-001
+    reason: Error handling delegated to API gateway layer
+```
+
+**Important**: Every suppression requires a `reason` field explaining the decision. This ensures suppressions are intentional and documented.
+
+### Time-Limited Suppressions
+
+Set an expiry date to create temporary suppressions:
+
+```yaml
+suppressions:
+  - id: OPS-001
+    reason: Rollout plan deferred until Q2 beta launch
+    expires: 2026-06-30
+```
+
+When suppressions expire:
+- They stop suppressing findings (findings reappear)
+- Tiresias displays a warning with the expired suppression details
+- You should update or remove expired entries from `.tiresias.yml`
+
+### Scoped Suppressions
+
+Suppress findings only for specific files, profiles, or severity levels:
+
+```yaml
+suppressions:
+  # Only suppress in draft documents
+  - id: REQ-001
+    reason: Early brainstorm, metrics TBD
+    scope: ["drafts/**/*.md"]
+
+  # Only suppress for security profile
+  - id: PERF-001
+    reason: Performance not critical for security reviews
+    profiles: ["security"]
+
+  # Only suppress high-severity instances
+  - id: TEST-001
+    reason: High-severity test gap accepted for MVP
+    severities: ["high"]
+
+  # Combine filters (all must match)
+  - id: DOC-001
+    reason: Internal docs don't need changelog
+    scope: ["internal/**"]
+    profiles: ["general"]
+    severities: ["low", "medium"]
+```
+
+**Scope patterns**: Use glob patterns like `*.md`, `docs/**/*.md`, or `design/*.txt`
+
+**Profiles**: `general`, `security`, `performance`, `reliability`
+
+**Severities**: `high`, `medium`, `low`
+
+### Viewing Suppressed Findings
+
+By default, suppressed findings are hidden. Use `--show-suppressed` to display them:
+
+```bash
+tiresias review docs/ --show-suppressed
+```
+
+Suppressed findings are marked with `[SUPPRESSED]` in the output.
+
+### Suppression Summary
+
+When findings are suppressed, Tiresias displays a summary:
+
+```
+┌─────────────────────────────────────────────────────┐
+│ Suppressed Findings                                  │
+│                                                      │
+│ Total suppressed: 3                                 │
+│   • High: 1                                         │
+│   • Medium: 2                                       │
+│   • Low: 0                                          │
+│                                                      │
+│ Use --show-suppressed to display them.              │
+└─────────────────────────────────────────────────────┘
+```
+
+### JSON Output
+
+Suppressed findings are always included in JSON output with `suppressed: true` and full suppression metadata:
+
+```json
+{
+  "findings": [
+    {
+      "id": "REQ-001",
+      "title": "Missing success metrics",
+      "severity": "high",
+      "suppressed": true,
+      "suppression": {
+        "reason": "Metrics tracked externally",
+        "expires": "2026-12-31",
+        "scope": ["docs/**"],
+        "profiles": ["general"],
+        "severities": ["high"]
+      }
+    }
+  ]
+}
+```
+
+### Best Practices
+
+- **Document the "why"**: Explain the decision, don't just restate the finding
+- **Link to context**: Reference tickets, docs, or decisions (e.g., "See ADR-042")
+- **Use expiry dates**: For time-limited decisions or deferred work
+- **Scope narrowly**: Use file patterns to avoid over-suppression
+- **Review regularly**: Expired suppressions indicate decisions to revisit
 
 ---
 
