@@ -268,11 +268,6 @@ def review_command(
 
         # Baseline comparison (if baseline provided)
         comparison_result = None
-        # Default: visible findings only (unless --show-suppressed)
-        if show_suppressed:
-            displayed_findings = findings  # Show all with suppressed marked
-        else:
-            displayed_findings = suppression_result.visible_findings
 
         if baseline_report:
             new, worsened, unchanged, improved = compare_findings(
@@ -325,21 +320,21 @@ def review_command(
                 maturity_regressed=maturity_regressed,
             )
 
-        # Apply severity threshold filter to displayed findings
+        # Apply severity threshold filter
         threshold_map = {
             "low": [Severity.LOW, Severity.MEDIUM, Severity.HIGH],
             "med": [Severity.MEDIUM, Severity.HIGH],
             "high": [Severity.HIGH],
         }
         allowed_severities = threshold_map[severity_threshold]
-        filtered_findings = [f for f in displayed_findings if f.severity in allowed_severities]
+        filtered_findings = [f for f in findings if f.severity in allowed_severities]
 
         # Calculate risk score (if not already calculated in baseline mode)
         if not baseline_report:
             risk_score, risk_explanation = calculate_risk_score(findings, config.category_weights)
 
-        # Generate summary (use displayed findings for baseline mode)
-        summary = _generate_summary(displayed_findings, files)
+        # Generate summary (use filtered findings)
+        summary = _generate_summary(filtered_findings, files)
 
         # Calculate elapsed time
         elapsed_ms = int((time.time() - start_time) * 1000)
@@ -367,7 +362,7 @@ def review_command(
                     core_sections_found=maturity_result.metrics.core_sections_found,
                 ),
             ),
-            findings=filtered_findings,
+            findings=filtered_findings,  # After severity threshold filter
             assumptions=assumptions,
             open_questions=questions,
             quick_summary=summary,
@@ -383,7 +378,7 @@ def review_command(
         if format == "json":
             output_text = render_json(report)
         else:
-            output_text = render_text(report, no_color, show_evidence)
+            output_text = render_text(report, no_color, show_evidence, show_suppressed)
 
         # Write output
         if output:
@@ -394,10 +389,10 @@ def review_command(
         # Check fail-on condition (ignore suppressed findings)
         if fail_on != "none":
             has_critical = any(
-                f.severity == Severity.HIGH and not f.suppressed for f in displayed_findings
+                f.severity == Severity.HIGH and not f.suppressed for f in filtered_findings
             )
             has_medium = any(
-                f.severity == Severity.MEDIUM and not f.suppressed for f in displayed_findings
+                f.severity == Severity.MEDIUM and not f.suppressed for f in filtered_findings
             )
 
             should_fail = False

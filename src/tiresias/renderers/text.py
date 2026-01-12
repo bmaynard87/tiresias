@@ -74,7 +74,12 @@ def _truncate_evidence(lines: list[str], severity: Severity) -> list[str]:
     return truncated
 
 
-def render_text(report: ReviewReport, no_color: bool = False, show_evidence: bool = False) -> str:
+def render_text(
+    report: ReviewReport,
+    no_color: bool = False,
+    show_evidence: bool = False,
+    show_suppressed: bool = False,
+) -> str:
     """
     Render report as rich text for terminal.
 
@@ -82,6 +87,7 @@ def render_text(report: ReviewReport, no_color: bool = False, show_evidence: boo
         report: Review report to render
         no_color: Disable color output
         show_evidence: Show evidence for each finding
+        show_suppressed: Show suppressed findings (marked with [SUPPRESSED])
 
     Returns:
         Formatted text output
@@ -98,7 +104,7 @@ def render_text(report: ReviewReport, no_color: bool = False, show_evidence: boo
         _render_header(console, report)
         _render_maturity(console, report)
         _render_risk_score(console, report)
-        _render_findings(console, report, show_evidence)
+        _render_findings(console, report, show_evidence, show_suppressed)
         _render_baseline_comparison(console, report)
         _render_suppressed_summary(console, report)
         _render_expired_suppressions(console, report)
@@ -188,16 +194,27 @@ def _render_risk_score(console: Console, report: ReviewReport) -> None:
     console.print()
 
 
-def _render_findings(console: Console, report: ReviewReport, show_evidence: bool = False) -> None:
+def _render_findings(
+    console: Console,
+    report: ReviewReport,
+    show_evidence: bool = False,
+    show_suppressed: bool = False,
+) -> None:
     """Render findings grouped by severity."""
-    if not report.findings:
+    # Filter findings based on show_suppressed flag
+    if show_suppressed:
+        visible_findings = report.findings  # Show all
+    else:
+        visible_findings = [f for f in report.findings if not f.suppressed]
+
+    if not visible_findings:
         console.print("[green]No findings detected![/green]\n")
         return
 
     # Group by severity
-    high = [f for f in report.findings if f.severity == Severity.HIGH]
-    medium = [f for f in report.findings if f.severity == Severity.MEDIUM]
-    low = [f for f in report.findings if f.severity == Severity.LOW]
+    high = [f for f in visible_findings if f.severity == Severity.HIGH]
+    medium = [f for f in visible_findings if f.severity == Severity.MEDIUM]
+    low = [f for f in visible_findings if f.severity == Severity.LOW]
 
     if high:
         console.print("[bold red]High Severity Findings[/bold red]")
