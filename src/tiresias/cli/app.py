@@ -12,9 +12,12 @@ from tiresias.core.analyzer import HeuristicAnalyzer, extract_sections
 from tiresias.core.config import load_config
 from tiresias.core.file_loader import discover_files, load_file_content, redact_secrets
 from tiresias.core.maturity import compute_maturity
+from tiresias.core.rules import get_rule_by_id, list_rule_ids
 from tiresias.core.scoring import calculate_risk_score
+from tiresias.renderers.explain import render_explain_list, render_explain_text
 from tiresias.renderers.json import render_json
 from tiresias.renderers.text import render_text
+from tiresias.schemas.explain import RuleExplanation, RuleList
 from tiresias.schemas.report import Maturity, MaturityMetrics, Metadata, ReviewReport, Severity
 
 app = typer.Typer(
@@ -289,6 +292,128 @@ def _generate_summary(findings: list, files: list[Path]) -> list[str]:
         summary.append(f"Most issues in: {top_cat[0]}")
 
     return summary
+
+
+@app.command(name="explain")
+def explain_command(
+    rule_id: Annotated[
+        str | None,
+        typer.Argument(
+            help="Rule ID to explain (e.g., REQ-001)",
+        ),
+    ] = None,
+    format: Annotated[
+        str,
+        typer.Option(
+            "--format",
+            "-f",
+            help="Output format",
+        ),
+    ] = "text",
+    list_rules: Annotated[
+        bool,
+        typer.Option(
+            "--list",
+            help="List all available rule IDs",
+        ),
+    ] = False,
+    output: Annotated[
+        Path | None,
+        typer.Option(
+            "--output",
+            "-o",
+            help="Write output to file instead of stdout",
+        ),
+    ] = None,
+    no_color: Annotated[
+        bool,
+        typer.Option(
+            "--no-color",
+            help="Disable color output",
+        ),
+    ] = False,
+) -> None:
+    """
+    Explain a specific rule and how to address it.
+
+    Shows detailed information about what a rule checks, why it matters,
+    and how to fix findings. Use --list to see all available rules.
+    """
+    # Validate format option
+    if format not in ("text", "json"):
+        typer.echo("Error: --format must be 'text' or 'json'", err=True)
+        raise typer.Exit(2)
+
+    try:
+        # Handle --list flag
+        if list_rules:
+            rules = list_rule_ids()
+
+            if format == "json":
+                rule_list = RuleList(
+                    rules=[{"id": rid, "title": title} for rid, title in rules]
+                )
+                output_text = rule_list.model_dump_json(indent=2)
+            else:
+                output_text = render_explain_list(rules, no_color)
+
+            # Write output
+            if output:
+                output.write_text(output_text, encoding="utf-8")
+            else:
+                typer.echo(output_text)
+
+            raise typer.Exit(0)
+
+        # Require rule_id if not --list
+        if rule_id is None:
+            typer.echo(
+                "Error: Must provide a rule ID or use --list flag\n\n"
+                "Usage:\n"
+                "  tiresias explain <RULE_ID>\n"
+                "  tiresias explain --list",
+                err=True,
+            )
+            raise typer.Exit(2)
+
+        # Lookup rule
+        rule = get_rule_by_id(rule_id)
+        if rule is None:
+            typer.echo(
+                f"Error: Unknown rule ID '{rule_id}'\n\n"
+                "Available rules can be listed with:\n"
+                "  tiresias explain --list",
+                err=True,
+            )
+            raise typer.Exit(3)
+
+        # Render output
+        if format == "json":
+            explanation = RuleExplanation(
+                id=rule.id,
+                title=rule.title,
+                severity=rule.severity.value,
+                category=rule.category.value,
+                checks=rule.evidence_template,
+                why=rule.impact,
+                how_to_fix=rule.recommendation,
+                pitfalls=rule.pitfalls,
+            )
+            output_text = explanation.model_dump_json(indent=2)
+        else:
+            output_text = render_explain_text(rule, no_color)
+
+        # Write output
+        if output:
+            output.write_text(output_text, encoding="utf-8")
+        else:
+            typer.echo(output_text)
+
+    except typer.Exit:
+        raise
+    except Exception as e:
+        typer.echo(f"Error: {e}", err=True)
+        raise typer.Exit(3)
 
 
 @app.callback(invoke_without_command=True)
