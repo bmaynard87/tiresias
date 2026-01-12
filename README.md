@@ -255,7 +255,7 @@ category_weights:
 ```json
 {
   "metadata": {
-    "tool_version": "0.3.0",
+    "tool_version": "X.Y.Z",
     "profile": "general",
     "model_provider": "heuristic"
   },
