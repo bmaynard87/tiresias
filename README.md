@@ -228,6 +228,92 @@ How to address it:
 
 ---
 
+## Baseline Comparison Mode
+
+Compare your current design against a baseline (branch or commit) to detect regressions and new issues.
+
+### Usage
+
+```bash
+# Compare against main branch
+tiresias review docs/ --baseline main
+
+# Compare against specific commit
+tiresias review docs/ --baseline a3f2b1c4
+
+# Compare with remote branch
+tiresias review docs/ --baseline origin/main
+
+# CI mode: fail only on new/worsened HIGH findings
+tiresias review docs/ --baseline main --fail-on high
+```
+
+### What Gets Compared
+
+Tiresias compares findings by rule ID and category:
+
+- **New**: Findings present now but not in baseline
+- **Worsened**: Findings with increased severity vs baseline
+- **Unchanged**: Findings with same severity (hidden by default)
+- **Improved**: Findings with decreased severity (hidden by default)
+
+Only **new** and **worsened** findings are shown in text output and affect `--fail-on` logic.
+
+### Maturity Regression Warning
+
+If your document maturity score decreases vs baseline, Tiresias warns you:
+
+```
+⚠ Warning: Document maturity decreased vs baseline
+  Baseline maturity: 45/100
+  Current maturity: 38/100
+```
+
+### CI Integration Example
+
+```yaml
+name: Design Review
+
+on:
+  pull_request:
+    paths:
+      - 'docs/**'
+
+jobs:
+  tiresias:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # Need full history for baseline
+
+      - uses: astral-sh/setup-uv@v5
+
+      - run: uv sync
+
+      - name: Review with baseline
+        run: |
+          uv run tiresias review docs/ \
+            --baseline origin/main \
+            --fail-on high \
+            --format json \
+            --output review.json
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: tiresias-baseline-report
+          path: review.json
+```
+
+### Notes
+
+- Baseline mode requires files to be in a git repository
+- If no matching files exist at baseline ref, all findings are treated as "new"
+- JSON output includes full comparison details for CI/CD integration
+
+---
+
 ## Configuration File
 
 Create a `.tiresias.yml` file in your repo root:

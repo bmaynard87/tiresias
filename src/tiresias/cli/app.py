@@ -3,14 +3,16 @@
 import time
 from datetime import UTC, datetime
 from pathlib import Path
-from typing import Annotated
+from typing import Annotated, cast
 
 import typer
 
 from tiresias import __version__
 from tiresias.core.analyzer import HeuristicAnalyzer, extract_sections
+from tiresias.core.baseline import check_maturity_regression, compare_findings
 from tiresias.core.config import load_config
 from tiresias.core.file_loader import discover_files, load_file_content, redact_secrets
+from tiresias.core.git_baseline import list_files_at_ref, load_file_at_ref, validate_git_ref
 from tiresias.core.maturity import compute_maturity
 from tiresias.core.rules import get_rule_by_id, list_rule_ids
 from tiresias.core.scoring import calculate_risk_score
@@ -18,7 +20,18 @@ from tiresias.renderers.explain import render_explain_list, render_explain_text
 from tiresias.renderers.json import render_json
 from tiresias.renderers.text import render_text
 from tiresias.schemas.explain import RuleExplanation, RuleList
-from tiresias.schemas.report import Maturity, MaturityMetrics, Metadata, ReviewReport, Severity
+from tiresias.schemas.report import (
+    BaselineSummary,
+    ComparisonResult,
+    Finding,
+    FindingChange,
+    FindingComparison,
+    Maturity,
+    MaturityMetrics,
+    Metadata,
+    ReviewReport,
+    Severity,
+)
 
 app = typer.Typer(
     name="tiresias",
@@ -101,6 +114,13 @@ def review_command(
             help="Show evidence for each finding in text output",
         ),
     ] = False,
+    baseline: Annotated[
+        str | None,
+        typer.Option(
+            "--baseline",
+            help="Git ref to use as baseline for comparison (e.g., main, origin/main, commit-sha)",
+        ),
+    ] = None,
 ) -> None:
     """
     Perform design review analysis on engineering artifacts.
@@ -144,6 +164,58 @@ def review_command(
         if profile == "general" and config.default_profile != "general":
             profile = config.default_profile
 
+        # Baseline analysis (if provided)
+        baseline_report: dict[str, str | int | list[Finding]] | None = None
+        if baseline:
+            try:
+                # Validate git ref
+                commit_sha = validate_git_ref(baseline)
+
+                # Supported extensions for file discovery
+                supported_exts = {".md", ".txt", ".json", ".yaml", ".yml"}
+
+                # Load baseline files
+                baseline_files = list_files_at_ref(baseline, path_or_glob, supported_exts)
+
+                if not baseline_files:
+                    typer.echo(
+                        f"Warning: No files found at baseline ref '{baseline}'. "
+                        "Treating as empty baseline.",
+                        err=True,
+                    )
+
+                # Load baseline content
+                baseline_contents = []
+                redact_patterns = config.redact_patterns + (redact or [])
+                for file in baseline_files:
+                    content = load_file_at_ref(baseline, file, max_chars)
+                    content = redact_secrets(content, redact_patterns)
+                    baseline_contents.append(content)
+
+                baseline_combined = "\n\n---\n\n".join(baseline_contents)
+                baseline_sections = extract_sections(baseline_combined)
+
+                # Run baseline analysis
+                baseline_analyzer = HeuristicAnalyzer()
+                baseline_findings = baseline_analyzer.analyze(
+                    baseline_combined, profile, baseline_sections
+                )
+                baseline_maturity = compute_maturity(baseline_combined, baseline_sections)
+                baseline_risk, _ = calculate_risk_score(baseline_findings, config.category_weights)
+
+                # Store baseline report data
+                baseline_report = {
+                    "git_ref": baseline,
+                    "commit_sha": commit_sha,
+                    "findings": baseline_findings,
+                    "maturity_score": baseline_maturity.score,
+                    "risk_score": baseline_risk,
+                }
+
+            except ValueError as e:
+                typer.echo(f"Error: Invalid baseline ref '{baseline}': {e}", err=True)
+                raise typer.Exit(3)
+
         # Discover files
         files = discover_files(path_or_glob, config.ignore_paths)
 
@@ -158,8 +230,8 @@ def review_command(
         all_content = []
         redact_patterns = config.redact_patterns + (redact or [])
 
-        for file in files:
-            content = load_file_content(file, max_chars)
+        for file_path in files:
+            content = load_file_content(file_path, max_chars)
             content = redact_secrets(content, redact_patterns)
             all_content.append(content)
 
@@ -178,20 +250,76 @@ def review_command(
         # Compute document maturity
         maturity_result = compute_maturity(combined_content, sections)
 
-        # Apply severity threshold filter
+        # Baseline comparison (if baseline provided)
+        comparison_result = None
+        displayed_findings = findings  # Default: all findings
+
+        if baseline_report:
+            new, worsened, unchanged, improved = compare_findings(
+                findings,
+                cast(list[Finding], baseline_report["findings"]),
+            )
+
+            # Filter to new + worsened only
+            displayed_findings = new + [f for f, _ in worsened]
+
+            # Recalculate risk score from displayed findings
+            risk_score, risk_explanation = calculate_risk_score(
+                displayed_findings,
+                config.category_weights,
+            )
+
+            # Check maturity regression
+            maturity_regressed = check_maturity_regression(
+                maturity_result.score,
+                cast(int, baseline_report["maturity_score"]),
+            )
+
+            # Build comparison result
+            comparison_result = ComparisonResult(
+                baseline_summary=BaselineSummary(
+                    git_ref=cast(str, baseline_report["git_ref"]),
+                    commit_sha=cast(str, baseline_report["commit_sha"]),
+                    findings_count=len(cast(list[Finding], baseline_report["findings"])),
+                    risk_score=cast(int, baseline_report["risk_score"]),
+                    maturity_score=cast(int, baseline_report["maturity_score"]),
+                ),
+                new_findings=new,
+                worsened_findings=[
+                    FindingComparison(
+                        finding=f,
+                        change=FindingChange.WORSENED,
+                        baseline_severity=bs,
+                    )
+                    for f, bs in worsened
+                ],
+                unchanged_findings=unchanged,
+                improved_findings=[
+                    FindingComparison(
+                        finding=f,
+                        change=FindingChange.IMPROVED,
+                        baseline_severity=bs,
+                    )
+                    for f, bs in improved
+                ],
+                maturity_regressed=maturity_regressed,
+            )
+
+        # Apply severity threshold filter to displayed findings
         threshold_map = {
             "low": [Severity.LOW, Severity.MEDIUM, Severity.HIGH],
             "med": [Severity.MEDIUM, Severity.HIGH],
             "high": [Severity.HIGH],
         }
         allowed_severities = threshold_map[severity_threshold]
-        filtered_findings = [f for f in findings if f.severity in allowed_severities]
+        filtered_findings = [f for f in displayed_findings if f.severity in allowed_severities]
 
-        # Calculate risk score
-        risk_score, risk_explanation = calculate_risk_score(findings, config.category_weights)
+        # Calculate risk score (if not already calculated in baseline mode)
+        if not baseline_report:
+            risk_score, risk_explanation = calculate_risk_score(findings, config.category_weights)
 
-        # Generate summary
-        summary = _generate_summary(findings, files)
+        # Generate summary (use displayed findings for baseline mode)
+        summary = _generate_summary(displayed_findings, files)
 
         # Calculate elapsed time
         elapsed_ms = int((time.time() - start_time) * 1000)
@@ -225,6 +353,8 @@ def review_command(
             quick_summary=summary,
             risk_score=risk_score,
             risk_score_explanation=risk_explanation,
+            baseline_ref=baseline if baseline else None,
+            comparison=comparison_result,
         )
 
         # Render output
@@ -239,10 +369,10 @@ def review_command(
         else:
             typer.echo(output_text)
 
-        # Check fail-on condition
+        # Check fail-on condition (applies to displayed findings only)
         if fail_on != "none":
-            has_critical = any(f.severity == Severity.HIGH for f in findings)
-            has_medium = any(f.severity == Severity.MEDIUM for f in findings)
+            has_critical = any(f.severity == Severity.HIGH for f in displayed_findings)
+            has_medium = any(f.severity == Severity.MEDIUM for f in displayed_findings)
 
             should_fail = False
             if fail_on == "high" and has_critical:
