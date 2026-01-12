@@ -52,10 +52,33 @@ class Metadata(BaseModel):
     elapsed_ms: int = Field(..., description="Analysis duration in milliseconds")
 
 
+class MaturityMetrics(BaseModel):
+    """Metrics used to compute document maturity."""
+
+    char_count: int = Field(..., description="Total character count")
+    section_count: int = Field(..., description="Number of sections detected")
+    core_sections_present: int = Field(..., description="Count of core sections found")
+    core_sections_found: list[str] = Field(..., description="Names of found core sections")
+
+
+class Maturity(BaseModel):
+    """Document maturity assessment."""
+
+    level: str = Field(
+        ..., description="Maturity level (notes, early_draft, design_spec, production_ready)"
+    )
+    score: int = Field(..., ge=0, le=100, description="Maturity score 0-100")
+    confidence: str = Field(..., description="Confidence level (low, medium, high)")
+    interpretation: str = Field(..., description="User-facing interpretation of maturity level")
+    signals: list[str] = Field(..., description="List of signals that informed the assessment")
+    metrics: MaturityMetrics = Field(..., description="Detailed metrics")
+
+
 class ReviewReport(BaseModel):
     """Complete analysis report."""
 
     metadata: Metadata = Field(..., description="Report metadata")
+    maturity: Maturity = Field(..., description="Document maturity assessment")
     findings: list[Finding] = Field(..., description="List of findings")
     assumptions: list[str] = Field(..., description="Identified assumptions")
     open_questions: list[str] = Field(..., description="Open questions found")

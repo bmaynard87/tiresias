@@ -7,10 +7,29 @@ from tiresias.renderers.text import render_text
 from tiresias.schemas.report import (
     Category,
     Finding,
+    Maturity,
+    MaturityMetrics,
     Metadata,
     ReviewReport,
     Severity,
 )
+
+
+def _create_test_maturity() -> Maturity:
+    """Create a default maturity object for tests."""
+    return Maturity(
+        level="early_draft",
+        score=30,
+        confidence="medium",
+        interpretation="Test maturity",
+        signals=["test_signal"],
+        metrics=MaturityMetrics(
+            char_count=100,
+            section_count=2,
+            core_sections_present=1,
+            core_sections_found=["goals_scope"],
+        ),
+    )
 
 
 def test_render_json_valid() -> None:
@@ -23,6 +42,7 @@ def test_render_json_valid() -> None:
             profile="general",
             elapsed_ms=100,
         ),
+        maturity=_create_test_maturity(),
         findings=[],
         assumptions=[],
         open_questions=[],
@@ -49,6 +69,7 @@ def test_render_json_deterministic() -> None:
             profile="general",
             elapsed_ms=100,
         ),
+        maturity=_create_test_maturity(),
         findings=[
             Finding(
                 id="TEST-001",
@@ -84,6 +105,7 @@ def test_render_json_includes_findings() -> None:
             profile="general",
             elapsed_ms=100,
         ),
+        maturity=_create_test_maturity(),
         findings=[
             Finding(
                 id="TEST-001",
@@ -129,6 +151,7 @@ def test_render_text_includes_sections() -> None:
             profile="general",
             elapsed_ms=100,
         ),
+        maturity=_create_test_maturity(),
         findings=[
             Finding(
                 id="HIGH-001",
@@ -170,6 +193,7 @@ def test_render_text_no_color() -> None:
             profile="general",
             elapsed_ms=100,
         ),
+        maturity=_create_test_maturity(),
         findings=[],
         assumptions=[],
         open_questions=[],
@@ -194,6 +218,7 @@ def test_render_text_evidence_truncation_high_severity() -> None:
             profile="general",
             elapsed_ms=100,
         ),
+        maturity=_create_test_maturity(),
         findings=[
             Finding(
                 id="HIGH-001",
@@ -230,6 +255,7 @@ def test_render_text_evidence_truncation_medium_severity() -> None:
             profile="general",
             elapsed_ms=100,
         ),
+        maturity=_create_test_maturity(),
         findings=[
             Finding(
                 id="MED-001",
@@ -266,6 +292,7 @@ def test_render_text_evidence_truncation_low_severity() -> None:
             profile="general",
             elapsed_ms=100,
         ),
+        maturity=_create_test_maturity(),
         findings=[
             Finding(
                 id="LOW-001",
@@ -301,6 +328,7 @@ def test_render_json_always_includes_evidence() -> None:
             profile="general",
             elapsed_ms=100,
         ),
+        maturity=_create_test_maturity(),
         findings=[
             Finding(
                 id="TEST-001",
@@ -324,3 +352,90 @@ def test_render_json_always_includes_evidence() -> None:
 
     # JSON should always include evidence
     assert parsed["findings"][0]["evidence"] == "Test evidence"
+
+
+def test_render_text_includes_maturity() -> None:
+    """Test that text renderer displays maturity."""
+    report = ReviewReport(
+        metadata=Metadata(
+            tool_version="0.1.0",
+            timestamp="2024-01-01T00:00:00Z",
+            input_files=["test.md"],
+            profile="general",
+            elapsed_ms=100,
+        ),
+        maturity=Maturity(
+            level="early_draft",
+            score=35,
+            confidence="medium",
+            interpretation="Incomplete sections are expected.",
+            signals=["short_length", "few_sections"],
+            metrics=MaturityMetrics(
+                char_count=800,
+                section_count=3,
+                core_sections_present=2,
+                core_sections_found=["goals_scope", "dependencies"],
+            ),
+        ),
+        findings=[],
+        assumptions=[],
+        open_questions=[],
+        quick_summary=["1 finding"],
+        risk_score=15,
+        risk_score_explanation="15/100",
+    )
+
+    output = render_text(report, no_color=True)
+
+    assert "Document Maturity" in output
+    assert "Early Draft" in output
+    assert "35/100" in output
+    assert "Incomplete sections are expected" in output
+
+
+def test_render_json_includes_maturity() -> None:
+    """Test that JSON includes maturity field."""
+    report = ReviewReport(
+        metadata=Metadata(
+            tool_version="0.1.0",
+            timestamp="2024-01-01T00:00:00Z",
+            input_files=["test.md"],
+            profile="general",
+            elapsed_ms=100,
+        ),
+        maturity=Maturity(
+            level="design_spec",
+            score=62,
+            confidence="high",
+            interpretation="Document is substantial.",
+            signals=["comprehensive_length", "many_sections"],
+            metrics=MaturityMetrics(
+                char_count=3000,
+                section_count=8,
+                core_sections_present=5,
+                core_sections_found=[
+                    "goals_scope",
+                    "testing",
+                    "security",
+                    "dependencies",
+                    "rollout",
+                ],
+            ),
+        ),
+        findings=[],
+        assumptions=[],
+        open_questions=[],
+        quick_summary=["Clean"],
+        risk_score=20,
+        risk_score_explanation="20/100",
+    )
+
+    output = render_json(report)
+    parsed = json.loads(output)
+
+    assert "maturity" in parsed
+    assert parsed["maturity"]["level"] == "design_spec"
+    assert parsed["maturity"]["score"] == 62
+    assert len(parsed["maturity"]["signals"]) > 0
+    assert "metrics" in parsed["maturity"]
+    assert parsed["maturity"]["metrics"]["char_count"] == 3000

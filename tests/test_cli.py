@@ -99,3 +99,40 @@ def test_cli_review_verbose_alias(tmp_path: Path) -> None:
 
     assert result.exit_code == 0
     assert "Evidence:" in result.stdout
+
+
+def test_cli_maturity_in_text_output(tmp_path: Path) -> None:
+    """Test that maturity appears in text output."""
+    doc = tmp_path / "test.md"
+    doc.write_text("# Design\nVery short document.")
+
+    result = runner.invoke(app, ["review", str(doc), "--no-color"])
+
+    assert result.exit_code == 0
+    assert "Document Maturity" in result.stdout
+    assert "Level:" in result.stdout
+    assert "Score:" in result.stdout
+    assert "Signals:" in result.stdout
+
+
+def test_cli_maturity_in_json_output(tmp_path: Path) -> None:
+    """Test that maturity appears in JSON output."""
+    doc = tmp_path / "test.md"
+    doc.write_text("# Design\nVery short document.")
+
+    result = runner.invoke(app, ["review", str(doc), "--format", "json"])
+
+    assert result.exit_code == 0
+    report = json.loads(result.stdout)
+    assert "maturity" in report
+    assert report["maturity"]["level"] in [
+        "notes",
+        "early_draft",
+        "design_spec",
+        "production_ready",
+    ]
+    assert "score" in report["maturity"]
+    assert 0 <= report["maturity"]["score"] <= 100
+    assert "confidence" in report["maturity"]
+    assert "signals" in report["maturity"]
+    assert "metrics" in report["maturity"]

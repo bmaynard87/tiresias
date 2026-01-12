@@ -96,6 +96,7 @@ def render_text(report: ReviewReport, no_color: bool = False, show_evidence: boo
     # Capture output to string
     with console.capture() as capture:
         _render_header(console, report)
+        _render_maturity(console, report)
         _render_risk_score(console, report)
         _render_findings(console, report, show_evidence)
         _render_assumptions(console, report)
@@ -115,6 +116,34 @@ def _render_header(console: Console, report: ReviewReport) -> None:
     header_text.append(f"Duration: {report.metadata.elapsed_ms}ms", style="dim")
 
     console.print(Panel(header_text, border_style="cyan"))
+    console.print()
+
+
+def _render_maturity(console: Console, report: ReviewReport) -> None:
+    """Render document maturity assessment."""
+    maturity = report.maturity
+
+    # Determine color based on maturity level
+    color_map = {
+        "notes": "bright_black",
+        "early_draft": "yellow",
+        "design_spec": "blue",
+        "production_ready": "green",
+    }
+    color = color_map.get(maturity.level, "white")
+
+    # Format level name for display
+    level_display = maturity.level.replace("_", " ").title()
+
+    # Build maturity text
+    maturity_text = Text()
+    maturity_text.append(f"Level: {level_display}\n", style=f"bold {color}")
+    maturity_text.append(f"Score: {maturity.score}/100\n\n", style="dim")
+    maturity_text.append(f"{maturity.interpretation}\n\n", style="")
+    maturity_text.append("Signals: ", style="dim")
+    maturity_text.append(", ".join(maturity.signals), style="dim italic")
+
+    console.print(Panel(maturity_text, title="Document Maturity", border_style=color))
     console.print()
 
 
@@ -141,6 +170,16 @@ def _render_risk_score(console: Console, report: ReviewReport) -> None:
     score_text.append(f"{score}/100  ", style=f"bold {color}")
     score_text.append(f"[{gauge}]\n", style=color)
     score_text.append(report.risk_score_explanation, style="dim")
+
+    # Add maturity context for early-stage documents
+    if report.maturity.level in ("notes", "early_draft"):
+        score_text.append("\n\n")
+        score_text.append("Note: ", style="italic")
+        level_name = report.maturity.level.replace("_", " ")
+        score_text.append(
+            f"High risk scores are typical for {level_name} documents.",
+            style="dim italic",
+        )
 
     console.print(Panel(score_text, title="Overall Risk", border_style=color))
     console.print()
