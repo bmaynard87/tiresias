@@ -58,5 +58,6 @@ def _load_config_file(config_path: Path) -> TiresiasConfig:
         # If config is malformed, warn but continue with defaults
         # In production, you might want to log this
         import sys
+
         print(f"Config error: {e}", file=sys.stderr)
         return TiresiasConfig()

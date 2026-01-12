@@ -32,3 +32,6 @@ build/
 
 # Test Files
 sandbox_docs/
+
+# Coverage reports
+coverage.xml

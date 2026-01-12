@@ -28,7 +28,7 @@ def calculate_risk_score(
 
     # Calculate weighted score
     total_score = 0.0
-    severity_counts = Counter()
+    severity_counts: Counter = Counter()
 
     for finding in findings:
         base_points = severity_points[finding.severity]

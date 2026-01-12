@@ -3,7 +3,6 @@
 import json
 from pathlib import Path
 
-import pytest
 from typer.testing import CliRunner
 
 from tiresias.cli.app import app
@@ -36,9 +35,7 @@ The service will integrate with Stripe API.
     )
 
     runner = CliRunner()
-    result = runner.invoke(
-        app, ["review", str(doc), "--format", "json"]
-    )
+    result = runner.invoke(app, ["review", str(doc), "--format", "json"])
 
     assert result.exit_code == 0
 
@@ -86,8 +83,7 @@ New REST API for user management.
 
     # Security profile should flag missing security considerations
     assert any(
-        "security" in f["id"].lower() or f["category"] == "security"
-        for f in report["findings"]
+        "security" in f["id"].lower() or f["category"] == "security" for f in report["findings"]
     )
 
 
@@ -147,9 +143,7 @@ def test_e2e_text_output(tmp_path: Path) -> None:
     doc.write_text("# Design Document\nMinimal content")
 
     runner = CliRunner()
-    result = runner.invoke(
-        app, ["review", str(doc), "--format", "text"]
-    )
+    result = runner.invoke(app, ["review", str(doc), "--format", "text"])
 
     assert result.exit_code == 0
     # Should contain expected sections

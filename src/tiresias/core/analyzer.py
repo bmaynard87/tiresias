@@ -1,8 +1,8 @@
 """Heuristic analysis engine."""
 
 import re
+from collections.abc import Callable
 from dataclasses import dataclass
-from typing import Callable
 
 from tiresias.schemas.report import Category, Finding, Severity
 
@@ -159,13 +159,13 @@ class HeuristicAnalyzer:
 
         if profile == "security":
             # Security-focused: requirements, specific arch, security, ops ownership
-            included_prefixes = ("REQ-", "ARCH-003", "SEC-", "OPS-002")
+            included_prefixes: tuple[str, ...] = ("REQ-", "ARCH-003", "SEC-", "OPS-002")
             return [r for r in self.rules if r.id.startswith(included_prefixes)]
 
         elif profile == "performance":
             # Performance: architecture, performance, testing
-            included_prefixes = ("ARCH-", "PERF-", "TEST-")
-            return [r for r in self.rules if r.id.startswith(included_prefixes)]
+            included_prefixes_perf: tuple[str, ...] = ("ARCH-", "PERF-", "TEST-")
+            return [r for r in self.rules if r.id.startswith(included_prefixes_perf)]
 
         elif profile == "reliability":
             # Reliability: error handling, testing, operations, performance
@@ -191,8 +191,14 @@ class HeuristicAnalyzer:
                 severity=Severity.HIGH,
                 category=Category.REQUIREMENTS,
                 evidence_template="No section found discussing success criteria, metrics, or KPIs",
-                impact="Without measurable success criteria, it will be difficult to determine if the implementation achieves its goals or to make data-driven decisions",
-                recommendation="Add a section defining concrete success metrics (e.g., adoption rate, performance targets, user satisfaction scores)",
+                impact=(
+                    "Without measurable success criteria, it will be difficult to determine "
+                    "if the implementation achieves its goals or to make data-driven decisions"
+                ),
+                recommendation=(
+                    "Add a section defining concrete success metrics "
+                    "(e.g., adoption rate, performance targets, user satisfaction scores)"
+                ),
                 detect_fn=lambda c, s: any(
                     re.search(
                         r"success\s+(?:criteria|metrics)|kpi|key\s+performance|measure\s+success",
@@ -208,11 +214,16 @@ class HeuristicAnalyzer:
                 severity=Severity.MEDIUM,
                 category=Category.REQUIREMENTS,
                 evidence_template="No clear section defining goals, objectives, or scope",
-                impact="Ambiguous scope increases risk of scope creep, misaligned expectations, and wasted effort on out-of-scope work",
-                recommendation="Add a dedicated section outlining specific goals, objectives, and explicit scope boundaries (in-scope and out-of-scope)",
+                impact=(
+                    "Ambiguous scope increases risk of scope creep, misaligned expectations, "
+                    "and wasted effort on out-of-scope work"
+                ),
+                recommendation=(
+                    "Add a dedicated section outlining specific goals, objectives, "
+                    "and explicit scope boundaries (in-scope and out-of-scope)"
+                ),
                 detect_fn=lambda c, s: any(
-                    re.search(r"(?:goal|objective|scope|purpose)", section)
-                    for section in s
+                    re.search(r"(?:goal|objective|scope|purpose)", section) for section in s
                 ),
             ),
             # REQ-003: Missing non-functional requirements
@@ -221,9 +232,17 @@ class HeuristicAnalyzer:
                 title="Missing non-functional requirements",
                 severity=Severity.MEDIUM,
                 category=Category.REQUIREMENTS,
-                evidence_template="No discussion of performance, scalability, reliability, or SLA requirements",
-                impact="Lack of non-functional requirements may lead to systems that are functionally correct but fail under load or don't meet user expectations",
-                recommendation="Document expected performance targets, scalability needs, reliability requirements, and any SLAs",
+                evidence_template=(
+                    "No discussion of performance, scalability, reliability, or SLA requirements"
+                ),
+                impact=(
+                    "Lack of non-functional requirements may lead to systems that are "
+                    "functionally correct but fail under load or don't meet user expectations"
+                ),
+                recommendation=(
+                    "Document expected performance targets, scalability needs, "
+                    "reliability requirements, and any SLAs"
+                ),
                 detect_fn=lambda c, s: any(
                     re.search(
                         r"performance|scalability|reliability|availability|sla|latency|throughput",
@@ -238,9 +257,17 @@ class HeuristicAnalyzer:
                 title="Missing error handling strategy",
                 severity=Severity.HIGH,
                 category=Category.ARCHITECTURE,
-                evidence_template="No discussion of error handling, exceptions, failures, or fallback strategies",
-                impact="Without a defined error handling strategy, the system may fail ungracefully, provide poor user experience, or lose data",
-                recommendation="Document error scenarios, handling strategies, retry logic, fallback mechanisms, and user-facing error messaging",
+                evidence_template=(
+                    "No discussion of error handling, exceptions, failures, or fallback strategies"
+                ),
+                impact=(
+                    "Without a defined error handling strategy, the system may fail ungracefully, "
+                    "provide poor user experience, or lose data"
+                ),
+                recommendation=(
+                    "Document error scenarios, handling strategies, retry logic, "
+                    "fallback mechanisms, and user-facing error messaging"
+                ),
                 detect_fn=lambda c, s: any(
                     re.search(r"error|exception|failure|fallback|retry|graceful", section)
                     for section in s
@@ -252,9 +279,17 @@ class HeuristicAnalyzer:
                 title="Unclear dependencies",
                 severity=Severity.MEDIUM,
                 category=Category.ARCHITECTURE,
-                evidence_template="No clear discussion of dependencies, integrations, or external systems",
-                impact="Unclear dependencies can lead to integration surprises, blocked work, or architectural mismatches",
-                recommendation="List all external dependencies (services, APIs, libraries), integration points, and any assumptions about their behavior",
+                evidence_template=(
+                    "No clear discussion of dependencies, integrations, or external systems"
+                ),
+                impact=(
+                    "Unclear dependencies can lead to integration surprises, "
+                    "blocked work, or architectural mismatches"
+                ),
+                recommendation=(
+                    "List all external dependencies (services, APIs, libraries), "
+                    "integration points, and any assumptions about their behavior"
+                ),
                 detect_fn=lambda c, s: any(
                     re.search(
                         r"dependenc|integration|external\s+system|third[- ]party|api",
@@ -269,9 +304,18 @@ class HeuristicAnalyzer:
                 title="Missing data retention/privacy plan",
                 severity=Severity.HIGH,
                 category=Category.ARCHITECTURE,
-                evidence_template="Document mentions data/user information but lacks retention or privacy discussion",
-                impact="Missing data governance can lead to compliance violations (GDPR, CCPA), security risks, and legal liability",
-                recommendation="Document data retention policies, privacy considerations, PII handling, and compliance requirements",
+                evidence_template=(
+                    "Document mentions data/user information but lacks retention "
+                    "or privacy discussion"
+                ),
+                impact=(
+                    "Missing data governance can lead to compliance violations (GDPR, CCPA), "
+                    "security risks, and legal liability"
+                ),
+                recommendation=(
+                    "Document data retention policies, privacy considerations, "
+                    "PII handling, and compliance requirements"
+                ),
                 detect_fn=lambda c, s: (
                     # Return True (satisfied) if privacy IS discussed OR no data keywords
                     any(
@@ -296,11 +340,16 @@ class HeuristicAnalyzer:
                 severity=Severity.MEDIUM,
                 category=Category.TESTING,
                 evidence_template="No discussion of testing approach, QA, or validation strategy",
-                impact="Without a test strategy, quality may suffer, regressions may go undetected, and confidence in releases will be low",
-                recommendation="Define testing approach (unit, integration, e2e), coverage targets, and validation criteria",
+                impact=(
+                    "Without a test strategy, quality may suffer, regressions may go undetected, "
+                    "and confidence in releases will be low"
+                ),
+                recommendation=(
+                    "Define testing approach (unit, integration, e2e), "
+                    "coverage targets, and validation criteria"
+                ),
                 detect_fn=lambda c, s: any(
-                    re.search(r"test|qa|quality|validation|verification", section)
-                    for section in s
+                    re.search(r"test|qa|quality|validation|verification", section) for section in s
                 ),
             ),
             # OPS-001: Missing rollout plan
@@ -309,9 +358,17 @@ class HeuristicAnalyzer:
                 title="Missing rollout/deployment plan",
                 severity=Severity.HIGH,
                 category=Category.OPERATIONS,
-                evidence_template="No discussion of rollout, deployment, migration, or rollback strategy",
-                impact="Without a deployment plan, rollouts may be risky, uncoordinated, or lack rollback capability, leading to incidents",
-                recommendation="Document rollout strategy (phased, feature flags, canary), deployment steps, monitoring, and rollback procedures",
+                evidence_template=(
+                    "No discussion of rollout, deployment, migration, or rollback strategy"
+                ),
+                impact=(
+                    "Without a deployment plan, rollouts may be risky, uncoordinated, "
+                    "or lack rollback capability, leading to incidents"
+                ),
+                recommendation=(
+                    "Document rollout strategy (phased, feature flags, canary), "
+                    "deployment steps, monitoring, and rollback procedures"
+                ),
                 detect_fn=lambda c, s: any(
                     re.search(
                         r"rollout|deploy|migration|rollback|release\s+plan|launch\s+plan",
@@ -327,8 +384,14 @@ class HeuristicAnalyzer:
                 severity=Severity.MEDIUM,
                 category=Category.OPERATIONS,
                 evidence_template="No clear owner, team, or on-call responsibility defined",
-                impact="Unclear ownership leads to confusion about who is responsible for maintenance, incidents, and improvements",
-                recommendation="Identify the owning team, primary contacts, and on-call/support responsibilities",
+                impact=(
+                    "Unclear ownership leads to confusion about who is responsible "
+                    "for maintenance, incidents, and improvements"
+                ),
+                recommendation=(
+                    "Identify the owning team, primary contacts, "
+                    "and on-call/support responsibilities"
+                ),
                 detect_fn=lambda c, s: any(
                     re.search(
                         r"owner|team|responsible|maintainer|on[- ]call|support",
@@ -343,9 +406,17 @@ class HeuristicAnalyzer:
                 title="Missing security considerations",
                 severity=Severity.HIGH,
                 category=Category.SECURITY,
-                evidence_template="Document appears to involve sensitive operations but lacks security discussion",
-                impact="Ignoring security considerations can lead to vulnerabilities, data breaches, and compliance violations",
-                recommendation="Document authentication, authorization, encryption, input validation, and security review requirements",
+                evidence_template=(
+                    "Document appears to involve sensitive operations but lacks security discussion"
+                ),
+                impact=(
+                    "Ignoring security considerations can lead to vulnerabilities, "
+                    "data breaches, and compliance violations"
+                ),
+                recommendation=(
+                    "Document authentication, authorization, encryption, "
+                    "input validation, and security review requirements"
+                ),
                 detect_fn=lambda c, s: (
                     # Return True (satisfied) if security IS discussed OR no sensitive keywords
                     any(
@@ -370,8 +441,14 @@ class HeuristicAnalyzer:
                 severity=Severity.LOW,
                 category=Category.PERFORMANCE,
                 evidence_template="No specific performance targets or latency requirements defined",
-                impact="Without performance targets, it's difficult to validate if the implementation meets user expectations or to detect regressions",
-                recommendation="Define concrete performance targets (e.g., p95 latency < 200ms, throughput > 1000 rps)",
+                impact=(
+                    "Without performance targets, it's difficult to validate "
+                    "if the implementation meets user expectations or to detect regressions"
+                ),
+                recommendation=(
+                    "Define concrete performance targets "
+                    "(e.g., p95 latency < 200ms, throughput > 1000 rps)"
+                ),
                 detect_fn=lambda c, s: any(
                     re.search(
                         r"latency|throughput|performance\s+target|response\s+time|p\d{2}",
@@ -387,8 +464,14 @@ class HeuristicAnalyzer:
                 severity=Severity.LOW,
                 category=Category.DOCUMENTATION,
                 evidence_template="Design document lacks discussion of alternatives or trade-offs",
-                impact="Without documented alternatives and trade-offs, future maintainers won't understand why decisions were made, leading to repeated debates",
-                recommendation="Document considered alternatives, trade-offs, and the reasoning behind key decisions",
+                impact=(
+                    "Without documented alternatives and trade-offs, future maintainers won't "
+                    "understand why decisions were made, leading to repeated debates"
+                ),
+                recommendation=(
+                    "Document considered alternatives, trade-offs, "
+                    "and the reasoning behind key decisions"
+                ),
                 detect_fn=lambda c, s: any(
                     re.search(
                         r"alternative|trade[- ]off|why\s+(?:not|we)|decision|rationale|considered",

@@ -1,12 +1,11 @@
 """Typer CLI application."""
 
-import sys
 import time
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
+from typing import Annotated
 
 import typer
-from typing_extensions import Annotated
 
 from tiresias import __version__
 from tiresias.core.analyzer import HeuristicAnalyzer
@@ -62,7 +61,7 @@ def review_command(
         ),
     ] = 200000,
     redact: Annotated[
-        list[str],
+        list[str] | None,
         typer.Option(
             "--redact",
             help="Additional regex patterns to redact (repeatable)",
@@ -168,14 +167,10 @@ def review_command(
             "high": [Severity.HIGH],
         }
         allowed_severities = threshold_map[severity_threshold]
-        filtered_findings = [
-            f for f in findings if f.severity in allowed_severities
-        ]
+        filtered_findings = [f for f in findings if f.severity in allowed_severities]
 
         # Calculate risk score
-        risk_score, risk_explanation = calculate_risk_score(
-            findings, config.category_weights
-        )
+        risk_score, risk_explanation = calculate_risk_score(findings, config.category_weights)
 
         # Generate summary
         summary = _generate_summary(findings, files)
@@ -187,7 +182,7 @@ def review_command(
         report = ReviewReport(
             metadata=Metadata(
                 tool_version=__version__,
-                timestamp=datetime.now(timezone.utc).isoformat(),
+                timestamp=datetime.now(UTC).isoformat(),
                 input_files=[str(f) for f in files],
                 profile=profile,
                 model_provider="heuristic",
@@ -215,13 +210,8 @@ def review_command(
 
         # Check fail-on condition
         if fail_on != "none":
-            fail_threshold = Severity.MEDIUM if fail_on == "med" else Severity.HIGH
-            has_critical = any(
-                f.severity == Severity.HIGH for f in findings
-            )
-            has_medium = any(
-                f.severity == Severity.MEDIUM for f in findings
-            )
+            has_critical = any(f.severity == Severity.HIGH for f in findings)
+            has_medium = any(f.severity == Severity.MEDIUM for f in findings)
 
             should_fail = False
             if fail_on == "high" and has_critical:
@@ -263,7 +253,7 @@ def _generate_summary(findings: list, files: list[Path]) -> list[str]:
 
     # Top categories
     if findings:
-        categories = {}
+        categories: dict[str, int] = {}
         for f in findings:
             cat = f.category.value
             categories[cat] = categories.get(cat, 0) + 1

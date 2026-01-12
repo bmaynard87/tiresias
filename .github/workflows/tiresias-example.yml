@@ -5,11 +5,17 @@ on:
     paths:
       - 'docs/**'
       - 'specs/**'
+      - 'examples/**'
       - '**.md'
       - '**.txt'
       - '**.yaml'
       - '**.yml'
       - '**.json'
+    paths-ignore:
+      - '.github/workflows/**'
+      - 'pyproject.toml'
+      - 'uv.lock'
+      - 'README.md'
 
 jobs:
   review:
@@ -29,7 +35,7 @@ jobs:
 
       - name: Run Tiresias review
         run: |
-          uv run tiresias review docs/ \
+          uv run tiresias review examples/ \
             --format json \
             --output tiresias-report.json \
             --fail-on high

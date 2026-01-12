@@ -1,7 +1,5 @@
 """Tests for the heuristic analyzer."""
 
-import pytest
-
 from tiresias.core.analyzer import HeuristicAnalyzer
 from tiresias.schemas.report import Severity
 
@@ -90,8 +88,7 @@ def test_analyzer_profile_security_filters() -> None:
     # Security findings should only have specific IDs
     security_ids = {f.id for f in security_findings}
     assert all(
-        f_id.startswith(("REQ-", "SEC-", "OPS-002")) or f_id == "ARCH-003"
-        for f_id in security_ids
+        f_id.startswith(("REQ-", "SEC-", "OPS-002")) or f_id == "ARCH-003" for f_id in security_ids
     )
 
 

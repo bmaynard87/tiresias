@@ -2,8 +2,6 @@
 
 from pathlib import Path
 
-import pytest
-
 from tiresias.core.config import load_config
 from tiresias.schemas.config import TiresiasConfig
 

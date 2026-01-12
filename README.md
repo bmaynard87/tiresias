@@ -1,5 +1,7 @@
 # Tiresias
 
+[![CI](https://github.com/bmaynard/tiresias/actions/workflows/ci.yml/badge.svg)](https://github.com/bmaynard/tiresias/actions/workflows/ci.yml)
+
 **Design review and pre-mortem analysis for engineering artifacts.**
 
 Tiresias performs automated design reviews on your engineering documents (design docs, ADRs, specs, prompts) to identify missing considerations, risks, and potential failure modes before implementation. Think of it as a pre-mortem tool that catches issues early in the design phase.
