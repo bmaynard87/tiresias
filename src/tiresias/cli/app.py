@@ -418,10 +418,10 @@ def _generate_summary(findings: list, files: list[Path]) -> list[str]:
     # File count
     summary.append(f"Analyzed {len(files)} file(s)")
 
-    # Finding counts
-    high = sum(1 for f in findings if f.severity == Severity.HIGH)
-    med = sum(1 for f in findings if f.severity == Severity.MEDIUM)
-    low = sum(1 for f in findings if f.severity == Severity.LOW)
+    # Finding counts (exclude suppressed findings)
+    high = sum(1 for f in findings if f.severity == Severity.HIGH and not f.suppressed)
+    med = sum(1 for f in findings if f.severity == Severity.MEDIUM and not f.suppressed)
+    low = sum(1 for f in findings if f.severity == Severity.LOW and not f.suppressed)
 
     if high:
         summary.append(f"Found {high} high-severity issue(s)")
