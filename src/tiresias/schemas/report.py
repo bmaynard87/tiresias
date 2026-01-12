@@ -74,6 +74,59 @@ class Maturity(BaseModel):
     metrics: MaturityMetrics = Field(..., description="Detailed metrics")
 
 
+class FindingChange(str, Enum):
+    """Type of change relative to baseline."""
+
+    NEW = "new"
+    WORSENED = "worsened"
+    UNCHANGED = "unchanged"
+    IMPROVED = "improved"
+
+
+class FindingComparison(BaseModel):
+    """Comparison of a finding against baseline."""
+
+    finding: Finding = Field(..., description="The finding")
+    change: FindingChange = Field(..., description="Type of change")
+    baseline_severity: Severity | None = Field(
+        None,
+        description="Severity in baseline (None if new)",
+    )
+
+
+class BaselineSummary(BaseModel):
+    """Summary of baseline analysis."""
+
+    git_ref: str = Field(..., description="Git reference analyzed")
+    commit_sha: str = Field(..., description="Resolved commit SHA")
+    findings_count: int = Field(..., description="Total findings in baseline")
+    risk_score: int = Field(..., description="Risk score of baseline")
+    maturity_score: int = Field(..., description="Maturity score of baseline")
+
+
+class ComparisonResult(BaseModel):
+    """Result of baseline comparison."""
+
+    baseline_summary: BaselineSummary = Field(..., description="Summary of baseline")
+    new_findings: list[Finding] = Field(..., description="Findings not in baseline")
+    worsened_findings: list[FindingComparison] = Field(
+        ...,
+        description="Findings with increased severity",
+    )
+    unchanged_findings: list[Finding] = Field(
+        ...,
+        description="Findings with same severity",
+    )
+    improved_findings: list[FindingComparison] = Field(
+        ...,
+        description="Findings with decreased severity or resolved",
+    )
+    maturity_regressed: bool = Field(
+        ...,
+        description="True if maturity score decreased",
+    )
+
+
 class ReviewReport(BaseModel):
     """Complete analysis report."""
 
@@ -85,5 +138,13 @@ class ReviewReport(BaseModel):
     quick_summary: list[str] = Field(..., description="3-5 bullet summary")
     risk_score: int = Field(..., ge=0, le=100, description="Overall risk score 0-100")
     risk_score_explanation: str = Field(..., description="Explanation of risk score calculation")
+    baseline_ref: str | None = Field(
+        None,
+        description="Git ref used for baseline comparison",
+    )
+    comparison: ComparisonResult | None = Field(
+        None,
+        description="Baseline comparison results (only if baseline provided)",
+    )
 
     model_config = {"json_schema_extra": {"title": "TiresiasReviewReport"}}
