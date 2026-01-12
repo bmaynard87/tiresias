@@ -16,6 +16,7 @@ from tiresias.core.git_baseline import list_files_at_ref, load_file_at_ref, vali
 from tiresias.core.maturity import compute_maturity
 from tiresias.core.rules import get_rule_by_id, list_rule_ids
 from tiresias.core.scoring import calculate_risk_score
+from tiresias.core.suppression import apply_suppressions
 from tiresias.renderers.explain import render_explain_list, render_explain_text
 from tiresias.renderers.json import render_json
 from tiresias.renderers.text import render_text
@@ -121,6 +122,13 @@ def review_command(
             help="Git ref to use as baseline for comparison (e.g., main, origin/main, commit-sha)",
         ),
     ] = None,
+    show_suppressed: Annotated[
+        bool,
+        typer.Option(
+            "--show-suppressed",
+            help="Show suppressed findings in output",
+        ),
+    ] = False,
 ) -> None:
     """
     Perform design review analysis on engineering artifacts.
@@ -250,9 +258,21 @@ def review_command(
         # Compute document maturity
         maturity_result = compute_maturity(combined_content, sections)
 
+        # Apply suppressions
+        suppression_result = apply_suppressions(
+            findings=findings,
+            config=config,
+            profile=profile,
+            input_files=[str(f) for f in files],
+        )
+
         # Baseline comparison (if baseline provided)
         comparison_result = None
-        displayed_findings = findings  # Default: all findings
+        # Default: visible findings only (unless --show-suppressed)
+        if show_suppressed:
+            displayed_findings = findings  # Show all with suppressed marked
+        else:
+            displayed_findings = suppression_result.visible_findings
 
         if baseline_report:
             new, worsened, unchanged, improved = compare_findings(
@@ -355,6 +375,8 @@ def review_command(
             risk_score_explanation=risk_explanation,
             baseline_ref=baseline if baseline else None,
             comparison=comparison_result,
+            suppressed_summary=suppression_result.get_suppressed_summary(),
+            expired_suppressions=suppression_result.expired_suppressions,
         )
 
         # Render output
@@ -369,10 +391,14 @@ def review_command(
         else:
             typer.echo(output_text)
 
-        # Check fail-on condition (applies to displayed findings only)
+        # Check fail-on condition (ignore suppressed findings)
         if fail_on != "none":
-            has_critical = any(f.severity == Severity.HIGH for f in displayed_findings)
-            has_medium = any(f.severity == Severity.MEDIUM for f in displayed_findings)
+            has_critical = any(
+                f.severity == Severity.HIGH and not f.suppressed for f in displayed_findings
+            )
+            has_medium = any(
+                f.severity == Severity.MEDIUM and not f.suppressed for f in displayed_findings
+            )
 
             should_fail = False
             if fail_on == "high" and has_critical:

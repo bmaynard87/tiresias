@@ -48,7 +48,7 @@ class Finding(BaseModel):
     recommendation: str = Field(..., description="How to address it")
     suppressed: bool = Field(default=False, description="Whether this finding is suppressed")
     suppression: SuppressionInfo | None = Field(
-        None, description="Suppression details if suppressed"
+        default=None, description="Suppression details if suppressed"
     )
 
 

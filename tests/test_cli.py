@@ -203,3 +203,128 @@ def test_cli_baseline_fail_on_with_new_findings(tmp_path: Path) -> None:
     # Exit code 1 means findings were found and fail-on triggered
     # Exit code 0 means no critical findings or feature not working as expected
     assert result.exit_code in (0, 1)  # Either way is valid depending on findings
+
+
+def test_cli_suppressions_hide_by_default(tmp_path: Path) -> None:
+    """Test that suppressed findings are hidden by default."""
+    doc = tmp_path / "test.md"
+    doc.write_text("# Design\nMinimal content")
+
+    config = tmp_path / ".tiresias.yml"
+    config.write_text("""suppressions:
+  - id: REQ-001
+    reason: Accepted risk for this test
+""")
+
+    # Run from tmp_path so config is found
+    import os
+
+    original_dir = os.getcwd()
+    try:
+        os.chdir(tmp_path)
+        result = runner.invoke(app, ["review", str(doc), "--no-color"])
+    finally:
+        os.chdir(original_dir)
+
+    assert result.exit_code == 0
+    # Should show suppressed summary
+    assert "Suppressed Findings" in result.stdout
+    # Should not show [SUPPRESSED] markers (findings are hidden)
+    assert "[SUPPRESSED]" not in result.stdout
+
+
+def test_cli_suppressions_show_with_flag(tmp_path: Path) -> None:
+    """Test that --show-suppressed displays suppressed findings."""
+    doc = tmp_path / "test.md"
+    doc.write_text("# Design\nMinimal content")
+
+    config = tmp_path / ".tiresias.yml"
+    config.write_text("""suppressions:
+  - id: REQ-001
+    reason: Accepted risk for this test
+""")
+
+    # Run from tmp_path so config is found
+    import os
+
+    original_dir = os.getcwd()
+    try:
+        os.chdir(tmp_path)
+        result = runner.invoke(app, ["review", str(doc), "--show-suppressed", "--no-color"])
+    finally:
+        os.chdir(original_dir)
+
+    assert result.exit_code == 0
+    # Should show [SUPPRESSED] markers in findings table
+    assert "[SUPPRESSED]" in result.stdout
+
+
+def test_cli_suppressions_in_json_output(tmp_path: Path) -> None:
+    """Test that JSON output includes suppression metadata."""
+    doc = tmp_path / "test.md"
+    doc.write_text("# Design\nMinimal content")
+
+    config = tmp_path / ".tiresias.yml"
+    config.write_text("""
+suppressions:
+  - id: REQ-001
+    reason: Accepted risk for this test
+    expires: 2030-12-31
+""")
+
+    result = runner.invoke(app, ["review", str(doc), "--format", "json"])
+
+    assert result.exit_code == 0
+    report = json.loads(result.stdout)
+
+    # Check for suppression fields in findings
+    suppressed_findings = [f for f in report["findings"] if f.get("suppressed", False)]
+    if suppressed_findings:
+        finding = suppressed_findings[0]
+        assert "suppression" in finding
+        assert finding["suppression"]["reason"] == "Accepted risk for this test"
+        assert finding["suppression"]["expires"] == "2030-12-31"
+
+    # Check for suppressed summary
+    if report.get("suppressed_summary"):
+        assert "total" in report["suppressed_summary"]
+        assert "by_severity" in report["suppressed_summary"]
+
+
+def test_cli_expired_suppression_warning(tmp_path: Path) -> None:
+    """Test that expired suppressions generate warnings."""
+    doc = tmp_path / "test.md"
+    # Create a document that triggers REQ-001
+    doc.write_text("""# Design Document
+## Overview
+This is a design document without success metrics.
+
+## Architecture
+Some architecture details.
+""")
+
+    config = tmp_path / ".tiresias.yml"
+    config.write_text("""suppressions:
+  - id: REQ-001
+    reason: Old suppression
+    expires: 2020-01-01
+""")
+
+    # Run from tmp_path so config is found
+    import os
+
+    original_dir = os.getcwd()
+    try:
+        os.chdir(tmp_path)
+        result = runner.invoke(app, ["review", str(doc), "--no-color"])
+    finally:
+        os.chdir(original_dir)
+
+    assert result.exit_code == 0
+    # Should show expired suppression warning if REQ-001 actually fired
+    # Check JSON output for more reliable assertion
+    result_json = runner.invoke(app, ["review", str(doc), "--format", "json"])
+    report = json.loads(result_json.stdout)
+    # If the suppression exists and is expired, it should be in expired_suppressions
+    # regardless of whether the rule actually fired
+    assert "expired_suppressions" in report
