@@ -46,10 +46,14 @@ Claude **must follow these rules strictly**:
 
 1. Implement feature on a feature branch
 2. Open PR → merge into `main`
-3. Bump version on `main`
-4. Commit version bump
-5. Tag `vX.Y.Z`
-6. Push tag → release workflow runs
+3. Bump version on `main` in `pyproject.toml`
+4. Update version test in `tests/test_cli.py`
+5. Commit version bump: `git commit -m "chore: bump version to vX.Y.Z"`
+6. Create tag: `git tag vX.Y.Z`
+7. Push commit and tag: `git push && git push origin vX.Y.Z`
+8. Release workflow runs automatically
+
+**IMPORTANT:** Always create and push tags after version bumps on `main`.
 
 Claude should **never create or move tags** during feature work.
 
