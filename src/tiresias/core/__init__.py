@@ -7,6 +7,7 @@ from tiresias.core.file_loader import discover_files, load_file_content, redact_
 from tiresias.core.git_baseline import list_files_at_ref, load_file_at_ref, validate_git_ref
 from tiresias.core.rules import get_all_rules, get_rule_by_id, list_rule_ids
 from tiresias.core.scoring import calculate_risk_score
+from tiresias.core.suppression import SuppressionResult, apply_suppressions
 
 __all__ = [
     "HeuristicAnalyzer",
@@ -24,4 +25,6 @@ __all__ = [
     "compare_findings",
     "check_maturity_regression",
     "FindingKey",
+    "apply_suppressions",
+    "SuppressionResult",
 ]
