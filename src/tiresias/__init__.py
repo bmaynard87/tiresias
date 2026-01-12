@@ -1,6 +1,12 @@
 """Tiresias: Design review and pre-mortem analysis tool."""
 
-__version__ = "0.1.0"
+from importlib.metadata import PackageNotFoundError, version
+
+try:
+    __version__ = version("tiresias")
+except PackageNotFoundError:
+    # Fallback for development when package not installed
+    __version__ = "0.0.0+dev"
 
 __all__ = ["__version__", "main"]
 

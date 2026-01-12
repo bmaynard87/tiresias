@@ -2,6 +2,7 @@
 
 import json
 
+from tiresias import __version__
 from tiresias.renderers.json import render_json
 from tiresias.renderers.text import render_text
 from tiresias.schemas.report import (
@@ -36,7 +37,7 @@ def test_render_json_valid() -> None:
     """Test that JSON renderer produces valid JSON."""
     report = ReviewReport(
         metadata=Metadata(
-            tool_version="0.1.0",
+            tool_version=__version__,
             timestamp="2024-01-01T00:00:00Z",
             input_files=["test.md"],
             profile="general",
@@ -55,7 +56,9 @@ def test_render_json_valid() -> None:
 
     # Should be valid JSON
     parsed = json.loads(output)
-    assert parsed["metadata"]["tool_version"] == "0.1.0"
+    assert parsed["metadata"]["tool_version"] == __version__
+    assert isinstance(parsed["metadata"]["tool_version"], str)
+    assert len(parsed["metadata"]["tool_version"]) > 0
     assert parsed["risk_score"] == 0
 
 
@@ -63,7 +66,7 @@ def test_render_json_deterministic() -> None:
     """Test that JSON output is deterministic."""
     report = ReviewReport(
         metadata=Metadata(
-            tool_version="0.1.0",
+            tool_version=__version__,
             timestamp="2024-01-01T00:00:00Z",
             input_files=["test.md"],
             profile="general",
@@ -99,7 +102,7 @@ def test_render_json_includes_findings() -> None:
     """Test that JSON includes all findings."""
     report = ReviewReport(
         metadata=Metadata(
-            tool_version="0.1.0",
+            tool_version=__version__,
             timestamp="2024-01-01T00:00:00Z",
             input_files=["test.md"],
             profile="general",
@@ -145,7 +148,7 @@ def test_render_text_includes_sections() -> None:
     """Test that text renderer includes expected sections."""
     report = ReviewReport(
         metadata=Metadata(
-            tool_version="0.1.0",
+            tool_version=__version__,
             timestamp="2024-01-01T00:00:00Z",
             input_files=["test.md"],
             profile="general",
@@ -187,7 +190,7 @@ def test_render_text_no_color() -> None:
     """Test that no_color flag works."""
     report = ReviewReport(
         metadata=Metadata(
-            tool_version="0.1.0",
+            tool_version=__version__,
             timestamp="2024-01-01T00:00:00Z",
             input_files=["test.md"],
             profile="general",
@@ -212,7 +215,7 @@ def test_render_text_evidence_truncation_high_severity() -> None:
     """Test that high severity shows full evidence."""
     report = ReviewReport(
         metadata=Metadata(
-            tool_version="0.1.0",
+            tool_version=__version__,
             timestamp="2024-01-01T00:00:00Z",
             input_files=["test.md"],
             profile="general",
@@ -249,7 +252,7 @@ def test_render_text_evidence_truncation_medium_severity() -> None:
     """Test that medium severity truncates to 2 sentences."""
     report = ReviewReport(
         metadata=Metadata(
-            tool_version="0.1.0",
+            tool_version=__version__,
             timestamp="2024-01-01T00:00:00Z",
             input_files=["test.md"],
             profile="general",
@@ -286,7 +289,7 @@ def test_render_text_evidence_truncation_low_severity() -> None:
     """Test that low severity truncates to 1 sentence."""
     report = ReviewReport(
         metadata=Metadata(
-            tool_version="0.1.0",
+            tool_version=__version__,
             timestamp="2024-01-01T00:00:00Z",
             input_files=["test.md"],
             profile="general",
@@ -322,7 +325,7 @@ def test_render_json_always_includes_evidence() -> None:
     """Test that JSON always includes evidence regardless of flag."""
     report = ReviewReport(
         metadata=Metadata(
-            tool_version="0.1.0",
+            tool_version=__version__,
             timestamp="2024-01-01T00:00:00Z",
             input_files=["test.md"],
             profile="general",
@@ -358,7 +361,7 @@ def test_render_text_includes_maturity() -> None:
     """Test that text renderer displays maturity."""
     report = ReviewReport(
         metadata=Metadata(
-            tool_version="0.1.0",
+            tool_version=__version__,
             timestamp="2024-01-01T00:00:00Z",
             input_files=["test.md"],
             profile="general",
@@ -397,7 +400,7 @@ def test_render_json_includes_maturity() -> None:
     """Test that JSON includes maturity field."""
     report = ReviewReport(
         metadata=Metadata(
-            tool_version="0.1.0",
+            tool_version=__version__,
             timestamp="2024-01-01T00:00:00Z",
             input_files=["test.md"],
             profile="general",
