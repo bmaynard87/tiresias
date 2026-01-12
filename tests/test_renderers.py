@@ -7,10 +7,29 @@ from tiresias.renderers.text import render_text
 from tiresias.schemas.report import (
     Category,
     Finding,
+    Maturity,
+    MaturityMetrics,
     Metadata,
     ReviewReport,
     Severity,
 )
+
+
+def _create_test_maturity() -> Maturity:
+    """Create a default maturity object for tests."""
+    return Maturity(
+        level="early_draft",
+        score=30,
+        confidence="medium",
+        interpretation="Test maturity",
+        signals=["test_signal"],
+        metrics=MaturityMetrics(
+            char_count=100,
+            section_count=2,
+            core_sections_present=1,
+            core_sections_found=["goals_scope"],
+        ),
+    )
 
 
 def test_render_json_valid() -> None:
@@ -23,6 +42,7 @@ def test_render_json_valid() -> None:
             profile="general",
             elapsed_ms=100,
         ),
+        maturity=_create_test_maturity(),
         findings=[],
         assumptions=[],
         open_questions=[],
@@ -49,6 +69,7 @@ def test_render_json_deterministic() -> None:
             profile="general",
             elapsed_ms=100,
         ),
+        maturity=_create_test_maturity(),
         findings=[
             Finding(
                 id="TEST-001",
@@ -84,6 +105,7 @@ def test_render_json_includes_findings() -> None:
             profile="general",
             elapsed_ms=100,
         ),
+        maturity=_create_test_maturity(),
         findings=[
             Finding(
                 id="TEST-001",
@@ -129,6 +151,7 @@ def test_render_text_includes_sections() -> None:
             profile="general",
             elapsed_ms=100,
         ),
+        maturity=_create_test_maturity(),
         findings=[
             Finding(
                 id="HIGH-001",
@@ -170,6 +193,7 @@ def test_render_text_no_color() -> None:
             profile="general",
             elapsed_ms=100,
         ),
+        maturity=_create_test_maturity(),
         findings=[],
         assumptions=[],
         open_questions=[],
@@ -194,6 +218,7 @@ def test_render_text_evidence_truncation_high_severity() -> None:
             profile="general",
             elapsed_ms=100,
         ),
+        maturity=_create_test_maturity(),
         findings=[
             Finding(
                 id="HIGH-001",
@@ -230,6 +255,7 @@ def test_render_text_evidence_truncation_medium_severity() -> None:
             profile="general",
             elapsed_ms=100,
         ),
+        maturity=_create_test_maturity(),
         findings=[
             Finding(
                 id="MED-001",
@@ -266,6 +292,7 @@ def test_render_text_evidence_truncation_low_severity() -> None:
             profile="general",
             elapsed_ms=100,
         ),
+        maturity=_create_test_maturity(),
         findings=[
             Finding(
                 id="LOW-001",
@@ -301,6 +328,7 @@ def test_render_json_always_includes_evidence() -> None:
             profile="general",
             elapsed_ms=100,
         ),
+        maturity=_create_test_maturity(),
         findings=[
             Finding(
                 id="TEST-001",

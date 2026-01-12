@@ -7,6 +7,35 @@ from dataclasses import dataclass
 from tiresias.schemas.report import Category, Finding, Severity
 
 
+def extract_sections(content: str) -> list[str]:
+    """
+    Extract markdown section headers and their context.
+
+    Args:
+        content: Document text
+
+    Returns:
+        List of section titles (normalized to lowercase)
+    """
+    sections: list[str] = []
+    lines = content.split("\n")
+
+    for i, line in enumerate(lines):
+        stripped = line.strip()
+        # Markdown headers
+        if stripped.startswith("#"):
+            header = re.sub(r"^#+\s*", "", stripped).strip().lower()
+            sections.append(header)
+
+            # Include first paragraph of section as context
+            if i + 1 < len(lines):
+                next_line = lines[i + 1].strip().lower()
+                if next_line:
+                    sections.append(next_line)
+
+    return sections
+
+
 @dataclass
 class AnalysisRule:
     """Definition of a single analysis rule."""
@@ -28,18 +57,22 @@ class HeuristicAnalyzer:
         """Initialize analyzer with rule set."""
         self.rules = self._build_rules()
 
-    def analyze(self, content: str, profile: str = "general") -> list[Finding]:
+    def analyze(
+        self, content: str, profile: str = "general", sections: list[str] | None = None
+    ) -> list[Finding]:
         """
         Analyze document content for design issues.
 
         Args:
             content: Document text content
             profile: Analysis profile (general, security, performance, reliability)
+            sections: Pre-extracted sections (if None, will extract from content)
 
         Returns:
             List of findings
         """
-        sections = self._extract_sections(content)
+        if sections is None:
+            sections = extract_sections(content)
         active_rules = self._filter_rules_by_profile(profile)
 
         findings: list[Finding] = []
@@ -124,34 +157,6 @@ class HeuristicAnalyzer:
                     questions.append(line)
 
         return questions[:15]  # Limit to top 15
-
-    def _extract_sections(self, content: str) -> list[str]:
-        """
-        Extract markdown section headers and their context.
-
-        Args:
-            content: Document text
-
-        Returns:
-            List of section titles (normalized to lowercase)
-        """
-        sections: list[str] = []
-        lines = content.split("\n")
-
-        for i, line in enumerate(lines):
-            stripped = line.strip()
-            # Markdown headers
-            if stripped.startswith("#"):
-                header = re.sub(r"^#+\s*", "", stripped).strip().lower()
-                sections.append(header)
-
-                # Include first paragraph of section as context
-                if i + 1 < len(lines):
-                    next_line = lines[i + 1].strip().lower()
-                    if next_line:
-                        sections.append(next_line)
-
-        return sections
 
     def _filter_rules_by_profile(self, profile: str) -> list[AnalysisRule]:
         """Filter rules based on analysis profile."""

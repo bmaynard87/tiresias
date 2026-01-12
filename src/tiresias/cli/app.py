@@ -8,13 +8,14 @@ from typing import Annotated
 import typer
 
 from tiresias import __version__
-from tiresias.core.analyzer import HeuristicAnalyzer
+from tiresias.core.analyzer import HeuristicAnalyzer, extract_sections
 from tiresias.core.config import load_config
 from tiresias.core.file_loader import discover_files, load_file_content, redact_secrets
+from tiresias.core.maturity import compute_maturity
 from tiresias.core.scoring import calculate_risk_score
 from tiresias.renderers.json import render_json
 from tiresias.renderers.text import render_text
-from tiresias.schemas.report import Metadata, ReviewReport, Severity
+from tiresias.schemas.report import Maturity, MaturityMetrics, Metadata, ReviewReport, Severity
 
 app = typer.Typer(
     name="tiresias",
@@ -162,11 +163,17 @@ def review_command(
         # Combine content for analysis
         combined_content = "\n\n---\n\n".join(all_content)
 
+        # Extract sections once (used by analyzer and maturity computation)
+        sections = extract_sections(combined_content)
+
         # Run analysis
         analyzer = HeuristicAnalyzer()
-        findings = analyzer.analyze(combined_content, profile)
+        findings = analyzer.analyze(combined_content, profile, sections)
         assumptions = analyzer.extract_assumptions(combined_content)
         questions = analyzer.extract_questions(combined_content)
+
+        # Compute document maturity
+        maturity_result = compute_maturity(combined_content, sections)
 
         # Apply severity threshold filter
         threshold_map = {
@@ -195,6 +202,19 @@ def review_command(
                 profile=profile,
                 model_provider="heuristic",
                 elapsed_ms=elapsed_ms,
+            ),
+            maturity=Maturity(
+                level=maturity_result.level,
+                score=maturity_result.score,
+                confidence=maturity_result.confidence,
+                interpretation=maturity_result.interpretation,
+                signals=maturity_result.signals,
+                metrics=MaturityMetrics(
+                    char_count=maturity_result.metrics.char_count,
+                    section_count=maturity_result.metrics.section_count,
+                    core_sections_present=maturity_result.metrics.core_sections_present,
+                    core_sections_found=maturity_result.metrics.core_sections_found,
+                ),
             ),
             findings=filtered_findings,
             assumptions=assumptions,
