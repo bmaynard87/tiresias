@@ -5,7 +5,6 @@ from io import StringIO
 from rich.console import Console
 from rich.panel import Panel
 from rich.table import Table
-from rich.text import Text
 
 from tiresias.core.rules import AnalysisRule
 
@@ -21,7 +20,8 @@ def render_explain_text(rule: AnalysisRule, no_color: bool = False) -> str:
     Returns:
         Formatted text output
     """
-    console = Console(file=StringIO(), force_terminal=not no_color, width=80)
+    output = StringIO()
+    console = Console(file=output, force_terminal=not no_color, width=80)
 
     # Title panel
     title = f"{rule.id}: {rule.title}"
@@ -45,25 +45,19 @@ def render_explain_text(rule: AnalysisRule, no_color: bool = False) -> str:
     console.print()
 
     # How to address it
-    console.print(
-        "[bold]How to address it:[/bold]" if not no_color else "How to address it:"
-    )
+    console.print("[bold]How to address it:[/bold]" if not no_color else "How to address it:")
     console.print(f"  {rule.recommendation}")
     console.print()
 
     # Common pitfalls (optional)
     if rule.pitfalls:
-        console.print(
-            "[bold]Common pitfalls:[/bold]" if not no_color else "Common pitfalls:"
-        )
+        console.print("[bold]Common pitfalls:[/bold]" if not no_color else "Common pitfalls:")
         console.print(f"  {rule.pitfalls}")
     else:
-        console.print(
-            "[bold]Common pitfalls:[/bold]" if not no_color else "Common pitfalls:"
-        )
+        console.print("[bold]Common pitfalls:[/bold]" if not no_color else "Common pitfalls:")
         console.print("  (None specified)")
 
-    return console.file.getvalue()
+    return output.getvalue()
 
 
 def render_explain_list(rules: list[tuple[str, str]], no_color: bool = False) -> str:
@@ -77,7 +71,8 @@ def render_explain_list(rules: list[tuple[str, str]], no_color: bool = False) ->
     Returns:
         Formatted table output
     """
-    console = Console(file=StringIO(), force_terminal=not no_color, width=80)
+    output = StringIO()
+    console = Console(file=output, force_terminal=not no_color, width=80)
 
     console.print("Available Rules")
     console.print()
@@ -94,4 +89,4 @@ def render_explain_list(rules: list[tuple[str, str]], no_color: bool = False) ->
     console.print()
     console.print("Use: tiresias explain <RULE_ID>")
 
-    return console.file.getvalue()
+    return output.getvalue()

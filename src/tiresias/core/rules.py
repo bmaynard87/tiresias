@@ -154,8 +154,7 @@ def get_all_rules() -> list[AnalysisRule]:
             severity=Severity.HIGH,
             category=Category.ARCHITECTURE,
             evidence_template=(
-                "Document mentions data/user information but lacks retention "
-                "or privacy discussion"
+                "Document mentions data/user information but lacks retention or privacy discussion"
             ),
             impact=(
                 "Missing data governance can lead to compliance violations (GDPR, CCPA), "
@@ -238,8 +237,7 @@ def get_all_rules() -> list[AnalysisRule]:
                 "for maintenance, incidents, and improvements"
             ),
             recommendation=(
-                "Identify the owning team, primary contacts, "
-                "and on-call/support responsibilities"
+                "Identify the owning team, primary contacts, and on-call/support responsibilities"
             ),
             detect_fn=lambda c, s: any(
                 re.search(

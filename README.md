@@ -6,7 +6,7 @@
 
 Tiresias performs automated design reviews on engineering documents (design docs, ADRs, specs, and AI prompts) to identify missing considerations, risks, and potential failure modes *before* implementation. Think of it as a pre-mortem tool that catches issues early—when they’re still cheap to fix.
 
-> **Opinionated by design:** if a concern is not documented, Tiresias assumes it is missing.
+> **Opinionated by design:** if a concern is not documented, Tiresias treats it as missing.
 
 ---
 
@@ -130,6 +130,8 @@ uv tool install tiresias
 tiresias review docs/design.md
 ```
 
+> **Note:** PyPI publishing is planned for a future release. For now, please install from source using the methods above.
+
 ---
 
 ## Quick Start
@@ -165,6 +167,64 @@ tiresias review <PATH_OR_GLOB> [OPTIONS]
 | `--show-evidence`      | `false`   | Show evidence for findings          |
 | `--output`             | stdout    | Write output to file                |
 | `--no-color`           | `false`   | Disable color output                |
+
+---
+
+## Explaining Rules
+
+Use the `explain` command to get detailed information about specific rules:
+
+```bash
+# Explain a specific rule
+tiresias explain REQ-001
+
+# List all available rules
+tiresias explain --list
+
+# Get JSON output
+tiresias explain ARCH-001 --format json
+```
+
+### Explain Options
+
+| Option       | Default | Description                         |
+| ------------ | ------- | ----------------------------------- |
+| `--format`   | `text`  | Output format: `text` or `json`     |
+| `--list`     | `false` | List all available rule IDs         |
+| `--output`   | stdout  | Write output to file                |
+| `--no-color` | `false` | Disable color output                |
+
+### Example: Understanding a Finding
+
+When you see a finding in your review:
+
+```
+REQ-001  Missing success metrics
+```
+
+Get details on how to address it:
+
+```bash
+$ tiresias explain REQ-001
+
+╭──────────────────────────────────────────────────────────────────────────────╮
+│ REQ-001: Missing success metrics                                             │
+╰──────────────────────────────────────────────────────────────────────────────╯
+
+Category: Requirements
+Severity: High
+
+What it checks:
+  No section found discussing success criteria, metrics, or KPIs
+
+Why it matters:
+  Without measurable success criteria, it will be difficult to determine if the
+  implementation achieves its goals or to make data-driven decisions
+
+How to address it:
+  Add a section defining concrete success metrics (e.g., adoption rate,
+  performance targets, user satisfaction scores)
+```
 
 ---
 

@@ -3,7 +3,7 @@
 import re
 
 from tiresias.core.rules import AnalysisRule, get_all_rules
-from tiresias.schemas.report import Category, Finding, Severity
+from tiresias.schemas.report import Finding, Severity
 
 
 def extract_sections(content: str) -> list[str]:

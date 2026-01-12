@@ -350,9 +350,7 @@ def explain_command(
             rules = list_rule_ids()
 
             if format == "json":
-                rule_list = RuleList(
-                    rules=[{"id": rid, "title": title} for rid, title in rules]
-                )
+                rule_list = RuleList(rules=[{"id": rid, "title": title} for rid, title in rules])
                 output_text = rule_list.model_dump_json(indent=2)
             else:
                 output_text = render_explain_list(rules, no_color)
