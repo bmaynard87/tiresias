@@ -89,6 +89,14 @@ def review_command(
             help="Disable color output",
         ),
     ] = False,
+    show_evidence: Annotated[
+        bool,
+        typer.Option(
+            "--show-evidence",
+            "--verbose",
+            help="Show evidence for each finding in text output",
+        ),
+    ] = False,
 ) -> None:
     """
     Perform design review analysis on engineering artifacts.
@@ -200,7 +208,7 @@ def review_command(
         if format == "json":
             output_text = render_json(report)
         else:
-            output_text = render_text(report, no_color)
+            output_text = render_text(report, no_color, show_evidence)
 
         # Write output
         if output:

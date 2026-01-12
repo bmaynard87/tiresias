@@ -66,3 +66,36 @@ def test_cli_review_nonexistent_file() -> None:
 
     assert result.exit_code == 3
     assert "Error" in result.output
+
+
+def test_cli_review_default_no_evidence(tmp_path: Path) -> None:
+    """Test that evidence is hidden by default."""
+    test_file = tmp_path / "test.md"
+    test_file.write_text("# Design\nSome content")
+
+    result = runner.invoke(app, ["review", str(test_file), "--no-color"])
+
+    assert result.exit_code == 0
+    assert "Evidence:" not in result.stdout
+
+
+def test_cli_review_show_evidence_flag(tmp_path: Path) -> None:
+    """Test that --show-evidence displays evidence."""
+    test_file = tmp_path / "test.md"
+    test_file.write_text("# Design\nSome content")
+
+    result = runner.invoke(app, ["review", str(test_file), "--show-evidence", "--no-color"])
+
+    assert result.exit_code == 0
+    assert "Evidence:" in result.stdout
+
+
+def test_cli_review_verbose_alias(tmp_path: Path) -> None:
+    """Test that --verbose alias works."""
+    test_file = tmp_path / "test.md"
+    test_file.write_text("# Design\nSome content")
+
+    result = runner.invoke(app, ["review", str(test_file), "--verbose", "--no-color"])
+
+    assert result.exit_code == 0
+    assert "Evidence:" in result.stdout

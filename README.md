@@ -77,6 +77,7 @@ tiresias review <PATH_OR_GLOB> [OPTIONS]
 | `--profile` | `general` | Analysis profile: `general`, `security`, `performance`, `reliability` |
 | `--output` | (stdout) | Write output to file |
 | `--no-color` | `false` | Disable color output |
+| `--show-evidence` | `false` | Show evidence for each finding (also `--verbose`) |
 
 ### Examples
 
@@ -92,6 +93,9 @@ tiresias review architecture.md --profile performance
 
 # CI mode: fail on medium+ issues
 tiresias review specs/ --fail-on med --no-color
+
+# Show evidence for findings
+tiresias review design.md --show-evidence
 ```
 
 ## Configuration File
