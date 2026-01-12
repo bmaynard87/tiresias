@@ -74,7 +74,12 @@ def _truncate_evidence(lines: list[str], severity: Severity) -> list[str]:
     return truncated
 
 
-def render_text(report: ReviewReport, no_color: bool = False, show_evidence: bool = False) -> str:
+def render_text(
+    report: ReviewReport,
+    no_color: bool = False,
+    show_evidence: bool = False,
+    show_suppressed: bool = False,
+) -> str:
     """
     Render report as rich text for terminal.
 
@@ -82,6 +87,7 @@ def render_text(report: ReviewReport, no_color: bool = False, show_evidence: boo
         report: Review report to render
         no_color: Disable color output
         show_evidence: Show evidence for each finding
+        show_suppressed: Show suppressed findings (marked with [SUPPRESSED])
 
     Returns:
         Formatted text output
@@ -98,8 +104,10 @@ def render_text(report: ReviewReport, no_color: bool = False, show_evidence: boo
         _render_header(console, report)
         _render_maturity(console, report)
         _render_risk_score(console, report)
-        _render_findings(console, report, show_evidence)
+        _render_findings(console, report, show_evidence, show_suppressed)
         _render_baseline_comparison(console, report)
+        _render_suppressed_summary(console, report)
+        _render_expired_suppressions(console, report)
         _render_assumptions(console, report)
         _render_questions(console, report)
         _render_summary(console, report)
@@ -186,16 +194,27 @@ def _render_risk_score(console: Console, report: ReviewReport) -> None:
     console.print()
 
 
-def _render_findings(console: Console, report: ReviewReport, show_evidence: bool = False) -> None:
+def _render_findings(
+    console: Console,
+    report: ReviewReport,
+    show_evidence: bool = False,
+    show_suppressed: bool = False,
+) -> None:
     """Render findings grouped by severity."""
-    if not report.findings:
+    # Filter findings based on show_suppressed flag
+    if show_suppressed:
+        visible_findings = report.findings  # Show all
+    else:
+        visible_findings = [f for f in report.findings if not f.suppressed]
+
+    if not visible_findings:
         console.print("[green]No findings detected![/green]\n")
         return
 
     # Group by severity
-    high = [f for f in report.findings if f.severity == Severity.HIGH]
-    medium = [f for f in report.findings if f.severity == Severity.MEDIUM]
-    low = [f for f in report.findings if f.severity == Severity.LOW]
+    high = [f for f in visible_findings if f.severity == Severity.HIGH]
+    medium = [f for f in visible_findings if f.severity == Severity.MEDIUM]
+    low = [f for f in visible_findings if f.severity == Severity.LOW]
 
     if high:
         console.print("[bold red]High Severity Findings[/bold red]")
@@ -229,9 +248,13 @@ def _render_findings_table(
     table.add_column("Recommendation", width=40)
 
     for finding in findings:
+        title = finding.title
+        if finding.suppressed:
+            title = f"[SUPPRESSED] {title}"
+
         table.add_row(
             finding.id,
-            finding.title,
+            title,
             finding.category.value,
             finding.recommendation,
         )
@@ -316,6 +339,46 @@ def _render_questions(console: Console, report: ReviewReport) -> None:
     console.print("[bold]Open Questions[/bold]")
     for i, question in enumerate(report.open_questions, 1):
         console.print(f"  {i}. {question}")
+    console.print()
+
+
+def _render_suppressed_summary(console: Console, report: ReviewReport) -> None:
+    """Render suppressed findings summary."""
+    if not report.suppressed_summary:
+        return
+
+    summary = report.suppressed_summary
+
+    summary_text = Text()
+    summary_text.append("Suppressed Findings\n\n", style="bold")
+    summary_text.append(f"Total suppressed: {summary.total}\n", style="dim")
+    summary_text.append(f"  • High: {summary.by_severity['high']}\n", style="dim")
+    summary_text.append(f"  • Medium: {summary.by_severity['medium']}\n", style="dim")
+    summary_text.append(f"  • Low: {summary.by_severity['low']}\n", style="dim")
+    summary_text.append("\nUse --show-suppressed to display them.", style="dim italic")
+
+    console.print(Panel(summary_text, border_style="yellow"))
+    console.print()
+
+
+def _render_expired_suppressions(console: Console, report: ReviewReport) -> None:
+    """Render expired suppression warnings."""
+    if not report.expired_suppressions:
+        return
+
+    warning_text = Text()
+    warning_text.append("⚠ Expired Suppressions Detected\n\n", style="bold yellow")
+    warning_text.append(
+        "The following suppressions have expired and should be removed from .tiresias.yml:\n\n",
+        style="",
+    )
+
+    for exp in report.expired_suppressions:
+        warning_text.append(f"  • {exp.id} ", style="bold")
+        warning_text.append(f"(expired {exp.expires})\n", style="dim")
+        warning_text.append(f"    Reason: {exp.reason}\n", style="dim italic")
+
+    console.print(Panel(warning_text, border_style="yellow"))
     console.print()
 
 

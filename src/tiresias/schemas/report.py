@@ -26,6 +26,16 @@ class Category(str, Enum):
     DOCUMENTATION = "documentation"
 
 
+class SuppressionInfo(BaseModel):
+    """Information about why a finding was suppressed."""
+
+    reason: str = Field(..., description="Justification for suppression")
+    expires: str | None = Field(None, description="Expiry date if set")
+    scope: list[str] | None = Field(None, description="Scope globs if set")
+    profiles: list[str] | None = Field(None, description="Profiles if set")
+    severities: list[str] | None = Field(None, description="Severities if set")
+
+
 class Finding(BaseModel):
     """A single analysis finding."""
 
@@ -36,6 +46,10 @@ class Finding(BaseModel):
     evidence: str = Field(..., description="Where/why this was flagged")
     impact: str = Field(..., description="What could go wrong")
     recommendation: str = Field(..., description="How to address it")
+    suppressed: bool = Field(default=False, description="Whether this finding is suppressed")
+    suppression: SuppressionInfo | None = Field(
+        default=None, description="Suppression details if suppressed"
+    )
 
 
 class Metadata(BaseModel):
@@ -104,6 +118,21 @@ class BaselineSummary(BaseModel):
     maturity_score: int = Field(..., description="Maturity score of baseline")
 
 
+class SuppressedSummary(BaseModel):
+    """Summary of suppressed findings."""
+
+    total: int = Field(..., description="Total suppressed findings")
+    by_severity: dict[str, int] = Field(..., description="Counts by severity (high, medium, low)")
+
+
+class ExpiredSuppression(BaseModel):
+    """An expired suppression that should be removed."""
+
+    id: str = Field(..., description="Rule ID")
+    expires: str = Field(..., description="Expiry date")
+    reason: str = Field(..., description="Original reason")
+
+
 class ComparisonResult(BaseModel):
     """Result of baseline comparison."""
 
@@ -145,6 +174,14 @@ class ReviewReport(BaseModel):
     comparison: ComparisonResult | None = Field(
         None,
         description="Baseline comparison results (only if baseline provided)",
+    )
+    suppressed_summary: SuppressedSummary | None = Field(
+        None,
+        description="Summary of suppressed findings (if any)",
+    )
+    expired_suppressions: list[ExpiredSuppression] = Field(
+        default_factory=list,
+        description="Suppressions that have expired",
     )
 
     model_config = {"json_schema_extra": {"title": "TiresiasReviewReport"}}
