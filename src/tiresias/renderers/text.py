@@ -99,6 +99,7 @@ def render_text(report: ReviewReport, no_color: bool = False, show_evidence: boo
         _render_maturity(console, report)
         _render_risk_score(console, report)
         _render_findings(console, report, show_evidence)
+        _render_baseline_comparison(console, report)
         _render_assumptions(console, report)
         _render_questions(console, report)
         _render_summary(console, report)
@@ -258,6 +259,42 @@ def _render_findings_table(
                     bullet_text = Text()
                     bullet_text.append(f"    • {line}", style="dim")
                     console.print(bullet_text)
+
+
+def _render_baseline_comparison(console: Console, report: ReviewReport) -> None:
+    """Render baseline comparison summary."""
+    if not report.comparison:
+        return
+
+    comp = report.comparison
+    baseline_sum = comp.baseline_summary
+
+    comparison_text = Text()
+    comparison_text.append("Baseline Comparison\n\n", style="bold")
+    comparison_text.append(f"Baseline: {baseline_sum.git_ref}\n", style="")
+    comparison_text.append(f"Commit: {baseline_sum.commit_sha[:8]}\n", style="dim")
+    comparison_text.append(f"Baseline risk score: {baseline_sum.risk_score}/100\n\n", style="dim")
+
+    comparison_text.append("Findings vs Baseline:\n", style="bold")
+    comparison_text.append(f"  • New: {len(comp.new_findings)}\n", style="green")
+    comparison_text.append(f"  • Worsened: {len(comp.worsened_findings)}\n", style="red")
+    comparison_text.append(f"  • Unchanged: {len(comp.unchanged_findings)} (hidden)\n", style="dim")
+    comparison_text.append(f"  • Improved: {len(comp.improved_findings)} (hidden)\n", style="dim")
+
+    console.print(Panel(comparison_text, border_style="yellow"))
+
+    # Maturity regression warning
+    if comp.maturity_regressed:
+        console.print()
+        warning_text = Text()
+        warning_text.append(
+            "⚠ Warning: Document maturity decreased vs baseline\n", style="bold yellow"
+        )
+        warning_text.append(f"  Baseline maturity: {baseline_sum.maturity_score}/100\n", style="")
+        warning_text.append(f"  Current maturity: {report.maturity.score}/100", style="")
+        console.print(Panel(warning_text, border_style="yellow"))
+
+    console.print()
 
 
 def _render_assumptions(console: Console, report: ReviewReport) -> None:
