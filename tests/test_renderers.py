@@ -182,3 +182,145 @@ def test_render_text_no_color() -> None:
 
     # Should not contain ANSI escape codes
     assert "\x1b[" not in output
+
+
+def test_render_text_evidence_truncation_high_severity() -> None:
+    """Test that high severity shows full evidence."""
+    report = ReviewReport(
+        metadata=Metadata(
+            tool_version="0.1.0",
+            timestamp="2024-01-01T00:00:00Z",
+            input_files=["test.md"],
+            profile="general",
+            elapsed_ms=100,
+        ),
+        findings=[
+            Finding(
+                id="HIGH-001",
+                title="High Finding",
+                severity=Severity.HIGH,
+                category=Category.ARCHITECTURE,
+                evidence="First sentence. Second sentence. Third sentence. Fourth sentence.",
+                impact="Impact",
+                recommendation="Fix",
+            ),
+        ],
+        assumptions=[],
+        open_questions=[],
+        quick_summary=["1 finding"],
+        risk_score=15,
+        risk_score_explanation="15/100",
+    )
+
+    output = render_text(report, no_color=True, show_evidence=True)
+
+    # High severity should show all sentences
+    assert "First sentence" in output
+    assert "Fourth sentence" in output
+    assert "..." not in output or "Fourth sentence..." not in output  # No truncation on last
+
+
+def test_render_text_evidence_truncation_medium_severity() -> None:
+    """Test that medium severity truncates to 2 sentences."""
+    report = ReviewReport(
+        metadata=Metadata(
+            tool_version="0.1.0",
+            timestamp="2024-01-01T00:00:00Z",
+            input_files=["test.md"],
+            profile="general",
+            elapsed_ms=100,
+        ),
+        findings=[
+            Finding(
+                id="MED-001",
+                title="Medium Finding",
+                severity=Severity.MEDIUM,
+                category=Category.TESTING,
+                evidence="First sentence. Second sentence. Third sentence. Fourth sentence.",
+                impact="Impact",
+                recommendation="Fix",
+            ),
+        ],
+        assumptions=[],
+        open_questions=[],
+        quick_summary=["1 finding"],
+        risk_score=8,
+        risk_score_explanation="8/100",
+    )
+
+    output = render_text(report, no_color=True, show_evidence=True)
+
+    # Medium should show first 2 sentences and add ellipsis
+    assert "First sentence" in output
+    assert "Second sentence" in output
+    assert "..." in output
+
+
+def test_render_text_evidence_truncation_low_severity() -> None:
+    """Test that low severity truncates to 1 sentence."""
+    report = ReviewReport(
+        metadata=Metadata(
+            tool_version="0.1.0",
+            timestamp="2024-01-01T00:00:00Z",
+            input_files=["test.md"],
+            profile="general",
+            elapsed_ms=100,
+        ),
+        findings=[
+            Finding(
+                id="LOW-001",
+                title="Low Finding",
+                severity=Severity.LOW,
+                category=Category.DOCUMENTATION,
+                evidence="First sentence. Second sentence. Third sentence.",
+                impact="Impact",
+                recommendation="Fix",
+            ),
+        ],
+        assumptions=[],
+        open_questions=[],
+        quick_summary=["1 finding"],
+        risk_score=3,
+        risk_score_explanation="3/100",
+    )
+
+    output = render_text(report, no_color=True, show_evidence=True)
+
+    # Low should show only first sentence with ellipsis
+    assert "First sentence" in output
+    assert "..." in output
+
+
+def test_render_json_always_includes_evidence() -> None:
+    """Test that JSON always includes evidence regardless of flag."""
+    report = ReviewReport(
+        metadata=Metadata(
+            tool_version="0.1.0",
+            timestamp="2024-01-01T00:00:00Z",
+            input_files=["test.md"],
+            profile="general",
+            elapsed_ms=100,
+        ),
+        findings=[
+            Finding(
+                id="TEST-001",
+                title="Test",
+                severity=Severity.HIGH,
+                category=Category.REQUIREMENTS,
+                evidence="Test evidence",
+                impact="Impact",
+                recommendation="Fix",
+            ),
+        ],
+        assumptions=[],
+        open_questions=[],
+        quick_summary=["1 finding"],
+        risk_score=15,
+        risk_score_explanation="15/100",
+    )
+
+    output = render_json(report)
+    parsed = json.loads(output)
+
+    # JSON should always include evidence
+    assert parsed["findings"][0]["evidence"] == "Test evidence"

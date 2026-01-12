@@ -5,16 +5,83 @@ from rich.panel import Panel
 from rich.table import Table
 from rich.text import Text
 
-from tiresias.schemas.report import ReviewReport, Severity
+from tiresias.schemas.report import Finding, ReviewReport, Severity
 
 
-def render_text(report: ReviewReport, no_color: bool = False) -> str:
+def _extract_evidence_lines(finding: Finding) -> list[str]:
+    """
+    Extract evidence as a list of lines from a finding.
+
+    Args:
+        finding: Finding with evidence field
+
+    Returns:
+        List of evidence lines (sentences)
+    """
+    if not finding.evidence:
+        return []
+
+    # Split by newlines first, then by sentence-ending punctuation
+    lines: list[str] = []
+    for paragraph in finding.evidence.split("\n"):
+        paragraph = paragraph.strip()
+        if not paragraph:
+            continue
+
+        # Split into sentences (. ! ?)
+        # Keep the punctuation with each sentence
+        import re
+
+        sentences = re.split(r"(?<=[.!?])\s+", paragraph)
+        lines.extend(s.strip() for s in sentences if s.strip())
+
+    return lines
+
+
+def _truncate_evidence(lines: list[str], severity: Severity) -> list[str]:
+    """
+    Truncate evidence lines based on severity level.
+
+    Args:
+        lines: List of evidence lines
+        severity: Finding severity (HIGH=unlimited, MEDIUM=2, LOW=1)
+
+    Returns:
+        Truncated list of evidence lines
+    """
+    if not lines:
+        return []
+
+    # Severity-based line limits
+    if severity == Severity.HIGH:
+        max_lines = None  # Unlimited
+    elif severity == Severity.MEDIUM:
+        max_lines = 2
+    else:  # LOW
+        max_lines = 1
+
+    if max_lines is None:
+        return lines
+
+    if len(lines) <= max_lines:
+        return lines
+
+    # Truncate and add ellipsis to last line
+    truncated = lines[:max_lines]
+    if truncated:
+        truncated[-1] = truncated[-1].rstrip() + "..."
+
+    return truncated
+
+
+def render_text(report: ReviewReport, no_color: bool = False, show_evidence: bool = False) -> str:
     """
     Render report as rich text for terminal.
 
     Args:
         report: Review report to render
         no_color: Disable color output
+        show_evidence: Show evidence for each finding
 
     Returns:
         Formatted text output
@@ -30,7 +97,7 @@ def render_text(report: ReviewReport, no_color: bool = False) -> str:
     with console.capture() as capture:
         _render_header(console, report)
         _render_risk_score(console, report)
-        _render_findings(console, report)
+        _render_findings(console, report, show_evidence)
         _render_assumptions(console, report)
         _render_questions(console, report)
         _render_summary(console, report)
@@ -79,7 +146,7 @@ def _render_risk_score(console: Console, report: ReviewReport) -> None:
     console.print()
 
 
-def _render_findings(console: Console, report: ReviewReport) -> None:
+def _render_findings(console: Console, report: ReviewReport, show_evidence: bool = False) -> None:
     """Render findings grouped by severity."""
     if not report.findings:
         console.print("[green]No findings detected![/green]\n")
@@ -92,22 +159,24 @@ def _render_findings(console: Console, report: ReviewReport) -> None:
 
     if high:
         console.print("[bold red]High Severity Findings[/bold red]")
-        _render_findings_table(console, high, "red")
+        _render_findings_table(console, high, "red", show_evidence)
         console.print()
 
     if medium:
         console.print("[bold yellow]Medium Severity Findings[/bold yellow]")
-        _render_findings_table(console, medium, "yellow")
+        _render_findings_table(console, medium, "yellow", show_evidence)
         console.print()
 
     if low:
         console.print("[bold blue]Low Severity Findings[/bold blue]")
-        _render_findings_table(console, low, "blue")
+        _render_findings_table(console, low, "blue", show_evidence)
         console.print()
 
 
-def _render_findings_table(console: Console, findings: list, color: str) -> None:
-    """Render a table of findings."""
+def _render_findings_table(
+    console: Console, findings: list, color: str, show_evidence: bool = False
+) -> None:
+    """Render a table of findings with optional evidence blocks."""
     table = Table(
         show_header=True,
         header_style=f"bold {color}",
@@ -128,6 +197,28 @@ def _render_findings_table(console: Console, findings: list, color: str) -> None
         )
 
     console.print(table)
+
+    # Display evidence blocks under the table if requested
+    if show_evidence:
+        for finding in findings:
+            evidence_lines = _extract_evidence_lines(finding)
+            if not evidence_lines:
+                continue
+
+            # Truncate based on severity
+            truncated_lines = _truncate_evidence(evidence_lines, finding.severity)
+
+            if truncated_lines:
+                # Print evidence block with indentation
+                console.print()  # Blank line before evidence
+                evidence_text = Text()
+                evidence_text.append(f"  {finding.id} Evidence:", style="dim italic")
+                console.print(evidence_text)
+
+                for line in truncated_lines:
+                    bullet_text = Text()
+                    bullet_text.append(f"    • {line}", style="dim")
+                    console.print(bullet_text)
 
 
 def _render_assumptions(console: Console, report: ReviewReport) -> None:
