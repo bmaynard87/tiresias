@@ -1,6 +1,6 @@
-# Tiresias
+![Tiresias Logo](docs/logo-small.svg)
 
-[![CI](https://github.com/bmaynard/tiresias/actions/workflows/ci.yml/badge.svg)](https://github.com/bmaynard/tiresias/actions/workflows/ci.yml)
+# Tiresias
 
 **Design review and pre-mortem analysis for engineering artifacts.**
 
@@ -474,6 +474,139 @@ Suppressed findings are always included in JSON output with `suppressed: true` a
 - **Use expiry dates**: For time-limited decisions or deferred work
 - **Scope narrowly**: Use file patterns to avoid over-suppression
 - **Review regularly**: Expired suppressions indicate decisions to revisit
+
+---
+
+## LLM Evidence Enrichment (Optional)
+
+Tiresias supports **optional LLM-powered evidence enrichment** to improve finding quality. When enabled, an LLM analyzes your document and enhances evidence with direct quotes and tailored recommendations.
+
+### Key Principles
+
+- **Opt-in only**: LLM enrichment is disabled by default
+- **Augmentation, not replacement**: Heuristic analysis remains the source of truth
+- **Graceful degradation**: If LLM fails, falls back to heuristic evidence
+- **Cost control**: Configurable caps on enrichments per run
+- **Never blocks CI/CD**: Failures log warnings but don't fail the review
+
+### Configuration
+
+Add LLM config to your `.tiresias.yml`:
+
+**Anthropic (Claude):**
+
+```yaml
+llm_config:
+  enabled: true
+  provider: anthropic
+  model: claude-sonnet-4-5
+  api_key_env: ANTHROPIC_API_KEY
+  temperature: 0.3
+  max_tokens: 2000
+  timeout_seconds: 30
+  max_retries: 2
+  max_enrichments_per_run: 10  # Cost control: max findings to enrich
+```
+
+```bash
+export ANTHROPIC_API_KEY=sk-ant-...
+```
+
+**OpenAI (GPT):**
+
+```yaml
+llm_config:
+  enabled: true
+  provider: openai
+  model: gpt-4o
+  api_key_env: OPENAI_API_KEY
+  temperature: 0.3
+  max_tokens: 2000
+  timeout_seconds: 30
+  max_retries: 2
+  max_enrichments_per_run: 10
+```
+
+```bash
+export OPENAI_API_KEY=sk-...
+```
+
+### Usage
+
+Enable via CLI flag:
+
+```bash
+tiresias review docs/design.md --enable-llm
+```
+
+Or enable in config (applies to all reviews):
+
+```yaml
+llm_config:
+  enabled: true
+```
+
+### How It Works
+
+1. **Heuristic analysis runs first** (deterministic, fast)
+2. **LLM enrichment layer** (optional, if enabled):
+   - Prioritizes HIGH severity findings first
+   - Enriches up to `max_enrichments_per_run` findings
+   - Extracts direct quotes as evidence
+   - Provides tailored recommendations
+   - Skips already-enriched findings (immutability)
+3. **Original findings preserved** if LLM fails
+
+### Output
+
+Enriched findings include an LLM banner:
+
+```
+✨ LLM Evidence Enrichment: anthropic (claude-sonnet-4-5) — 8/10 succeeded
+```
+
+JSON output includes enrichment metadata:
+
+```json
+{
+  "metadata": {
+    "llm_enrichment_enabled": true,
+    "llm_provider": "anthropic",
+    "llm_model": "claude-sonnet-4-5",
+    "llm_enrichments_attempted": 10,
+    "llm_enrichments_succeeded": 8,
+    "llm_enrichments_failed": 2
+  },
+  "findings": [
+    {
+      "id": "REQ-001",
+      "enriched_by_llm": true,
+      "evidence": "The document states: 'We will track adoption metrics'...",
+      "recommendation": "Add a dedicated Success Metrics section..."
+    }
+  ]
+}
+```
+
+### Cost Control
+
+Enrichment is capped by:
+- **Document size**: Max 100,000 characters (~25k tokens)
+- **Per-run cap**: Max `max_enrichments_per_run` findings (default 10)
+- **Priority**: HIGH severity enriched first, then MEDIUM, then LOW
+
+### Best Practices
+
+- **Start with small documents**: Test with 1-2 page docs first
+- **Monitor costs**: Check `llm_enrichments_attempted` in JSON output
+- **Use in CI sparingly**: Enable only for key documents or PRs
+- **Set conservative caps**: Start with `max_enrichments_per_run: 5`
+- **Review enrichments**: LLM evidence is better but not perfect
+
+### Supported Providers
+
+- **Anthropic** (Claude): `claude-sonnet-4-5`, `claude-opus-4-5`, etc.
+- **OpenAI** (GPT): `gpt-4o`, `gpt-4-turbo`, `gpt-4`, etc.
 
 ---
 
